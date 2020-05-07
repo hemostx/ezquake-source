@@ -5295,6 +5295,21 @@
       "remarks": "If you set r_rockettrail 7 and gl_part_trails 1, this variable will change your rockettrail duration",
       "type": "float"
     },
+	"gl_part_bloodtrails": {
+      "default": "0",
+      "group-id": "36",
+      "type": "boolean",
+      "values": [
+        {
+          "description": "Disable.",
+          "name": "false"
+        },
+        {
+          "description": "Determines particles used for blood trails (gibs).",
+          "name": "true"
+        }
+      ]
+    },
     "gl_part_trails": {
       "default": "0",
       "group-id": "36",
