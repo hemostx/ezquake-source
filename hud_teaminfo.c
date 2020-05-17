@@ -56,6 +56,7 @@ static cvar_t scr_teaminfo_powerup_style   = { "scr_teaminfo_powerup_style", "1"
 static cvar_t scr_teaminfo_weapon_style    = { "scr_teaminfo_weapon_style","1" };
 static cvar_t scr_teaminfo_show_enemies    = { "scr_teaminfo_show_enemies","0" };
 static cvar_t scr_teaminfo_show_self       = { "scr_teaminfo_show_self",   "2" };
+static cvar_t scr_teaminfo_sortplayers     = { "scr_teaminfo_sortplayers", "1"};
 static cvar_t scr_teaminfo_proportional    = { "scr_teaminfo_proportional", "0"};
 cvar_t scr_teaminfo                        = { "scr_teaminfo",             "1" };   // non-static for menu
 
@@ -104,6 +105,7 @@ void SCR_HUD_DrawTeamInfo(hud_t *hud)
 		*hud_teaminfo_powerup_style,
 		*hud_teaminfo_low_health,
 		*hud_teaminfo_layout,
+		*hud_teaminfo_sortplayers,
 		*hud_teaminfo_proportional;
 
 	if (hud_teaminfo_weapon_style == NULL) {
@@ -119,6 +121,7 @@ void SCR_HUD_DrawTeamInfo(hud_t *hud)
 		hud_teaminfo_powerup_style = HUD_FindVar(hud, "powerup_style");
 		hud_teaminfo_low_health = HUD_FindVar(hud, "low_health");
 		hud_teaminfo_layout = HUD_FindVar(hud, "layout");
+		hud_teaminfo_sortplayers =  HUD_FindVar(hud, "sortplayers");
 		hud_teaminfo_proportional = HUD_FindVar(hud, "proportional");
 	}
 
@@ -157,7 +160,9 @@ void SCR_HUD_DrawTeamInfo(hud_t *hud)
 		slots[slots_num++] = i;
 	}
 
-	qsort(slots, slots_num, sizeof(slots[0]), HUD_CompareTeamInfoSlots);
+	if (hud_teaminfo_sortplayers->integer){
+		qsort(slots, slots_num, sizeof(slots[0]), HUD_CompareTeamInfoSlots);
+	}
 
 	// well, better use fixed loc length
 	maxloc = bound(0, hud_teaminfo_loc_width->integer, 100);
@@ -682,6 +687,7 @@ void TeamInfo_HudInit(void)
 	Cvar_Register(&scr_teaminfo_weapon_style);
 	Cvar_Register(&scr_teaminfo_show_enemies);
 	Cvar_Register(&scr_teaminfo_show_self);
+	Cvar_Register(&scr_teaminfo_sortplayers);
 	Cvar_Register(&scr_teaminfo_proportional);
 	Cvar_Register(&scr_teaminfo);
 
@@ -700,6 +706,7 @@ void TeamInfo_HudInit(void)
 		"show_self", "1",
 		"scale", "1",
 		"powerup_style", "1",
+		"sortplayers", "1",
 		"proportional", "0",
 		NULL
 	);
