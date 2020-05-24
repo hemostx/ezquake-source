@@ -35,6 +35,7 @@ extern cvar_t vid_framebuffer_depthformat;
 extern cvar_t vid_framebuffer_palette;
 extern cvar_t vid_framebuffer_hdr;
 extern cvar_t vid_framebuffer_blit;
+extern cvar_t vid_framebuffer_smooth;
 extern cvar_t r_fx_geometry;
 
 #ifndef GL_NEGATIVE_ONE_TO_ONE
@@ -233,6 +234,18 @@ void GL_InitialiseFramebufferHandling(void)
 	memset(framebuffer_data, 0, sizeof(framebuffer_data));
 }
 
+void GL_FramebufferSetFiltering(qbool linear)
+{
+	texture_ref tex = framebuffer_data[framebuffer_std].texture[fbtex_standard];
+
+	if (R_TextureReferenceIsValid(tex)) {
+		texture_minification_id min_filter = linear ? texture_minification_linear : texture_minification_nearest;
+		texture_magnification_id mag_filter = linear ? texture_magnification_linear : texture_magnification_nearest;
+
+		renderer.TextureSetFiltering(tex, min_filter, mag_filter);
+	}
+}
+
 qbool GL_FramebufferCreate(framebuffer_id id, int width, int height)
 {
 	framebuffer_data_t* fb = NULL;
@@ -273,24 +286,12 @@ qbool GL_FramebufferCreate(framebuffer_id id, int width, int height)
 	strlcat(label, "/", sizeof(label));
 	strlcat(label, framebuffer_texture_names[fbtex_standard], sizeof(label));
 
-	//
-	//R_AllocateTextureReferences(texture_type_2d, width, height, hdr ? TEX_NOSCALE | (id == framebuffer_std ? 0 : TEX_ALPHA), 1, &fb->texture[fbtex_standard]);
 	GL_CreateTexturesWithIdentifier(texture_type_2d, 1, &fb->texture[fbtex_standard], label);
 	GL_TexStorage2D(fb->texture[fbtex_standard], 1, framebuffer_format, width, height, false);
 	renderer.TextureLabelSet(fb->texture[fbtex_standard], label);
-	renderer.TextureSetFiltering(fb->texture[fbtex_standard], texture_minification_linear, texture_minification_linear);
+	GL_FramebufferSetFiltering(vid_framebuffer_smooth.integer);
 	renderer.TextureWrapModeClamp(fb->texture[fbtex_standard]);
-
-	/*if (id == framebuffer_std) {
-		strlcpy(label, framebuffer_names[id], sizeof(label));
-		strlcat(label, "/", sizeof(label));
-		strlcat(label, framebuffer_texture_names[fbtex_bloom], sizeof(label));
-
-		R_AllocateTextureReferences(texture_type_2d, width, height, TEX_NOSCALE | TEX_MIPMAP, 1, &fb->texture[fbtex_bloom]);
-		renderer.TextureLabelSet(fb->texture[fbtex_bloom], label);
-		renderer.TextureSetFiltering(fb->texture[fbtex_bloom], texture_minification_linear, texture_minification_linear);
-		renderer.TextureWrapModeClamp(fb->texture[fbtex_bloom]);
-	}*/
+	R_TextureSetFlag(fb->texture[fbtex_standard], R_TextureGetFlag(fb->texture[fbtex_standard]) | TEX_NO_TEXTUREMODE);
 
 	// Create frame buffer with texture & depth
 	GL_GenFramebuffers(1, &fb->glref);
@@ -319,7 +320,7 @@ qbool GL_FramebufferCreate(framebuffer_id id, int width, int height)
 
 		GL_CreateTexturesWithIdentifier(texture_type_2d, 1, &fb->texture[fbtex_depth], label);
 		GL_TexStorage2D(fb->texture[fbtex_depth], 1, depthFormat, width, height, false);
-		renderer.TextureSetFiltering(fb->texture[fbtex_depth], texture_minification_linear, texture_minification_linear);
+		renderer.TextureSetFiltering(fb->texture[fbtex_depth], min_filter, mag_filter);
 		renderer.TextureWrapModeClamp(fb->texture[fbtex_depth]);
 
 		GL_FramebufferTexture(fb->glref, GL_DEPTH_ATTACHMENT, GL_TextureNameFromReference(fb->texture[fbtex_depth]), 0);
@@ -710,4 +711,44 @@ const char* GL_FramebufferZBufferString(framebuffer_id ref)
 	else {
 		return "unknown z-buffer";
 	}
+}
+
+static qbool GL_ScreenshotFramebuffer(void)
+{
+	extern cvar_t vid_framebuffer_sshotmode;
+
+	return vid_framebuffer_sshotmode.integer && vid_framebuffer.integer == USE_FRAMEBUFFER_SCREEN && GL_FramebufferEnabled3D();
+}
+
+void GL_Screenshot(byte* buffer, size_t size)
+{
+	size_t width = renderer.ScreenshotWidth();
+	size_t height = renderer.ScreenshotHeight();
+
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	if (qglBindFramebuffer) {
+		if (GL_ScreenshotFramebuffer()) {
+			qglBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer_data[framebuffer_std].glref);
+		}
+		else {
+			qglBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+		}
+	}
+	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer);
+}
+
+size_t GL_ScreenshotWidth(void)
+{
+	if (GL_ScreenshotFramebuffer()) {
+		return framebuffer_data[framebuffer_std].width;
+	}
+	return glConfig.vidWidth;
+}
+
+size_t GL_ScreenshotHeight(void)
+{
+	if (GL_ScreenshotFramebuffer()) {
+		return framebuffer_data[framebuffer_std].height;
+	}
+	return glConfig.vidHeight;
 }

@@ -518,14 +518,14 @@ qbool FontAlterCharCoordsWide(float* x, float* y, wchar ch, qbool bigchar, float
 		return false;
 	}
 
-	// Space.
-	if (ch == 32) {
+	// Space (& 'red' version).
+	if (ch == 32 || ch == (32 | 128)) {
 		*x += FontCharacterWidthWide(ch, scale, proportional);
 		return false;
 	}
 
 #ifdef EZ_FREETYPE_SUPPORT
-	if (proportional && ch <= sizeof(glyphs) / sizeof(glyphs[0]) && glyphs[ch].loaded) {
+	if (proportional && ch < sizeof(glyphs) / sizeof(glyphs[0]) && glyphs[ch].loaded) {
 		*x += glyphs[ch].offsets[0] * char_size * scale;
 	}
 #endif
@@ -535,7 +535,7 @@ qbool FontAlterCharCoordsWide(float* x, float* y, wchar ch, qbool bigchar, float
 
 float FontCharacterWidthWide(wchar ch, float scale, qbool proportional)
 {
-	unsigned char charset = (unsigned char)((ch >> 8) & 0xFF);
+	int charset = ((ch >> 8) & 0xFF);
 	float width = 8 * scale;
 
 #ifdef EZ_FREETYPE_SUPPORT
@@ -544,7 +544,7 @@ float FontCharacterWidthWide(wchar ch, float scale, qbool proportional)
 	}
 #endif
 
-	if (charset >= 0 && charset < MAX_CHARSETS && char_textures[charset].custom_scale_x != 0) {
+	if (charset >= 0 && charset < sizeof(char_textures) / sizeof(char_textures[0]) && char_textures[charset].custom_scale_x != 0) {
 		width *= char_textures[charset].custom_scale_x;
 	}
 

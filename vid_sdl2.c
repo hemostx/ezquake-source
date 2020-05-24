@@ -82,6 +82,7 @@ extern void TP_ExecTrigger(const char *);
 static void in_raw_callback(cvar_t *var, char *value, qbool *cancel);
 static void in_grab_windowed_mouse_callback(cvar_t *var, char *value, qbool *cancel);
 static void conres_changed_callback (cvar_t *var, char *string, qbool *cancel);
+static void framebuffer_smooth_changed_callback(cvar_t* var, char* string, qbool* cancel);
 static void GrabMouse(qbool grab, qbool raw);
 static void HandleEvents(void);
 static void VID_UpdateConRes(void);
@@ -193,6 +194,8 @@ cvar_t vid_framebuffer_palette     = {"vid_framebuffer_palette",       "0",     
 cvar_t vid_framebuffer_depthformat = {"vid_framebuffer_depthformat",   "0",       CVAR_NO_RESET | CVAR_LATCH };
 cvar_t vid_framebuffer_hdr         = {"vid_framebuffer_hdr",           "0",       CVAR_NO_RESET | CVAR_LATCH };
 cvar_t vid_framebuffer_hdr_tonemap = {"vid_framebuffer_hdr_tonemap",   "0" };
+cvar_t vid_framebuffer_smooth      = {"vid_framebuffer_smooth",        "1",       CVAR_NO_RESET, framebuffer_smooth_changed_callback };
+cvar_t vid_framebuffer_sshotmode   = {"vid_framebuffer_sshotmode",     "1" };
 
 //
 // function declaration
@@ -729,8 +732,8 @@ static void HandleEvents(void)
 
 				mx = event.motion.x - old_x;
 				my = event.motion.y - old_y;
-				cursor_x = min(max(0, cursor_x + (event.motion.x - glConfig.vidWidth / 2) * factor), glConfig.vidWidth);
-				cursor_y = min(max(0, cursor_y + (event.motion.y - glConfig.vidHeight / 2) * factor), glConfig.vidHeight);
+				cursor_x = min(max(0, cursor_x + (event.motion.x - glConfig.vidWidth / 2) * factor), VID_RenderWidth2D());
+				cursor_y = min(max(0, cursor_y + (event.motion.y - glConfig.vidHeight / 2) * factor), VID_RenderHeight2D());
 				SDL_WarpMouseInWindow(sdl_window, glConfig.vidWidth / 2, glConfig.vidHeight / 2);
 				old_x = glConfig.vidWidth / 2;
 				old_y = glConfig.vidHeight / 2;
@@ -741,8 +744,8 @@ static void HandleEvents(void)
 				cursor_x += event.motion.xrel * factor;
 				cursor_y += event.motion.yrel * factor;
 
-				cursor_x = bound(0, cursor_x, glConfig.vidWidth);
-				cursor_y = bound(0, cursor_y, glConfig.vidHeight);
+				cursor_x = bound(0, cursor_x, VID_RenderWidth2D());
+				cursor_y = bound(0, cursor_y, VID_RenderHeight2D());
 			}
 			break;
 		case SDL_MOUSEBUTTONDOWN:
@@ -848,6 +851,8 @@ static void VID_RegisterLatchCvars(void)
 	Cvar_Register(&vid_framebuffer_palette);
 	Cvar_Register(&vid_framebuffer_depthformat);
 	Cvar_Register(&vid_framebuffer_hdr);
+	Cvar_Register(&vid_framebuffer_smooth);
+	Cvar_Register(&vid_framebuffer_sshotmode);
 
 #ifdef X11_GAMMA_WORKAROUND
 	Cvar_Register(&vid_gamma_workaround);
@@ -1691,6 +1696,13 @@ static void VID_UpdateConRes(void)
 	vid.numpages = 2; // ??
 	Draw_AdjustConback();
 	vid.recalc_refdef = 1;
+}
+
+void GL_FramebufferSetFiltering(qbool linear);
+
+static void framebuffer_smooth_changed_callback(cvar_t* var, char* string, qbool* cancel)
+{
+	GL_FramebufferSetFiltering(var->integer);
 }
 
 static void conres_changed_callback(cvar_t *var, char *string, qbool *cancel)
