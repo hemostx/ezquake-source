@@ -28,6 +28,8 @@ typedef enum {
 	r_program_lightmap_compute,
 
 	r_program_fx_world_geometry,
+	r_program_brushmodel_alphatested,
+	r_program_simple,
 
 	r_program_count
 } r_program_id;
@@ -85,10 +87,19 @@ typedef enum {
 	r_program_uniform_world_textured_glc_causticSampler,
 	r_program_uniform_world_textured_glc_detailSampler,
 	r_program_uniform_world_textured_glc_time,
+	r_program_uniform_world_textured_glc_lumaScale,
+	r_program_uniform_world_textured_glc_fbScale,
+	r_program_uniform_world_textured_glc_r_floorcolor,
+	r_program_uniform_world_textured_glc_r_wallcolor,
 	r_program_uniform_sprites_glc_materialSampler,
 	r_program_uniform_sprites_glc_alphaThreshold,
 	r_program_uniform_hud_images_glc_primarySampler,
 	r_program_uniform_hud_images_glc_secondarySampler,
+	r_program_uniform_brushmodel_alphatested_outlines,
+	r_program_uniform_brushmodel_alphatested_sampler,
+	r_program_uniform_turb_glc_alpha,
+	r_program_uniform_turb_glc_color,
+	r_program_uniform_simple_color,
 	r_program_uniform_count
 } r_program_uniform_id;
 
@@ -124,6 +135,7 @@ void R_ProgramComputeSetMemoryBarrierFlag(r_program_id program_id, r_program_mem
 void R_ProgramUniform1i(r_program_uniform_id uniform_id, int value);
 void R_ProgramUniform1f(r_program_uniform_id uniform_id, float value);
 void R_ProgramUniform4fv(r_program_uniform_id uniform_id, const float* values);
+void R_ProgramUniform3f(r_program_uniform_id uniform_id, float x, float y, float z);
 void R_ProgramUniform3fv(r_program_uniform_id uniform_id, const float* values);
 void R_ProgramUniform2fv(r_program_uniform_id uniform_id, const float* values);
 void R_ProgramUniform3fNormalize(r_program_uniform_id uniform_id, const byte* values);

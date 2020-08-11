@@ -292,9 +292,7 @@ void V_ParseDamage (void)
 	if (cl.cshifts[CSHIFT_DAMAGE].percent > 150)
 		cl.cshifts[CSHIFT_DAMAGE].percent = 150;
 
-	fraction = v_damagecshift.value;
-	if (fraction < 0) fraction = 0;
-	if (fraction > 1) fraction = 1;
+	fraction = bound(0, v_damagecshift.value, 1);
 	cl.cshifts[CSHIFT_DAMAGE].percent *= fraction;
 
 	if (armor > blood) {
@@ -527,7 +525,7 @@ void V_CalcPowerupCshift(void)
 
 void V_CalcBlend (void)
 {
-	float r, g, b, a, a2;
+	float r, g, b, a, a2, t;
 	int j;
 	extern cvar_t gl_polyblend;
 
@@ -542,7 +540,8 @@ void V_CalcBlend (void)
 	}
 
 	// drop the damage value
-	cl.cshifts[CSHIFT_DAMAGE].percent -= cls.frametime * 150;
+	t = cls.frametime * 150;
+	cl.cshifts[CSHIFT_DAMAGE].percent -= t;
 	if (cl.cshifts[CSHIFT_DAMAGE].percent <= 0) {
 		cl.cshifts[CSHIFT_DAMAGE].percent = 0;
 	}
@@ -643,8 +642,9 @@ void V_UpdatePalette (void)
 		old_hwblend = gl_hwblend.value;
 	}
 
-	if (!new)
+	if (!new) {
 		return;
+	}
 
 	a = v_blend[3];
 
@@ -652,7 +652,7 @@ void V_UpdatePalette (void)
 		a = 0;
 	}
 
-	if (vid_gamma != 1.0) {
+	if (R_OldGammaBehaviour() && vid_gamma != 1.0) {
 		current_contrast = pow(current_contrast, vid_gamma);
 		current_gamma = current_gamma / vid_gamma;
 	}
@@ -1119,8 +1119,24 @@ void V_Init (void) {
 	Cvar_Register (&gl_hwblend);
 
 	Cvar_SetCurrentGroup(CVAR_GROUP_SCREEN);
-	Cvar_Register (&v_gamma);
-	Cvar_Register (&v_contrast);
+	Cvar_Register(&v_gamma);
+	Cvar_Register(&v_contrast);
 
+	// we do not need this after host initialized
+	if (!host_initialized) {
+		int i;
+		float def_gamma = v_gamma.value;
+		extern float vid_gamma;
+
+		if ((i = COM_CheckParm(cmdline_param_client_gamma)) != 0 && i + 1 < COM_Argc()) {
+			def_gamma = Q_atof(COM_Argv(i + 1));
+		}
+
+		def_gamma = bound(0.3, def_gamma, 3);
+		Cvar_SetDefaultAndValue(&v_gamma, def_gamma, def_gamma);
+		v_gamma.modified = true;
+
+		vid_gamma = def_gamma;
+	}
 	Cvar_ResetCurrentGroup();
 }

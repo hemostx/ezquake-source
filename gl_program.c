@@ -228,6 +228,14 @@ static r_program_uniform_t program_uniforms[] = {
 	{ r_program_world_textured_glc, "detailSampler", 1, false },
 	// r_program_uniform_world_textured_glc_time
 	{ r_program_world_textured_glc, "time", 1, false },
+	// r_program_uniform_world_textured_glc_lumaScale
+	{ r_program_world_textured_glc, "lumaMultiplier", 1, false },
+	// r_program_uniform_world_textured_glc_fbScale
+	{ r_program_world_textured_glc, "fbMultiplier", 1, false },
+	// r_program_uniform_world_textured_glc_r_floorcolor
+	{ r_program_world_textured_glc, "r_floorcolor", 1, false },
+	// r_program_uniform_world_textured_glc_r_wallcolor
+	{ r_program_world_textured_glc, "r_wallcolor", 1, false },
 	// r_program_uniform_sprites_glc_materialSampler,
 	{ r_program_sprites_glc, "materialSampler", 1, false },
 	// r_program_uniform_sprites_glc_alphaThreshold,
@@ -236,6 +244,16 @@ static r_program_uniform_t program_uniforms[] = {
 	{ r_program_hud_images_glc, "primarySampler", 1, false },
 	// r_program_uniform_hud_images_glc_secondarySampler
 	{ r_program_hud_images_glc, "secondarySampler", 1, false },
+	// r_program_uniform_brushmodel_alphatested_outlines,
+	{ r_program_brushmodel_alphatested, "draw_outlines", 1, false },
+	// r_program_uniform_brushmodel_alphatested_sampler,
+	{ r_program_brushmodel_alphatested, "SamplerNumber", 1, false },
+	// r_program_uniform_turb_glc_alpha
+	{ r_program_turb_glc, "alpha", 1, false },
+	// r_program_uniform_turb_glc_color
+	{ r_program_turb_glc, "color", 1, false },
+	// r_program_uniform_simple_color
+	{ r_program_simple, "color", 1, false }
 };
 
 #ifdef C_ASSERT
@@ -975,6 +993,13 @@ void R_ProgramUniform2fv(r_program_uniform_id uniform_id, const float* values)
 	}
 }
 
+void R_ProgramUniform3f(r_program_uniform_id uniform_id, float x, float y, float z)
+{
+	float vec[3] = { x, y, z };
+
+	R_ProgramUniform3fv(uniform_id, vec);
+}
+
 void R_ProgramUniform3fv(r_program_uniform_id uniform_id, const float* values)
 {
 	r_program_uniform_t* uniform = GL_ProgramUniformFind(uniform_id);
@@ -1071,12 +1096,14 @@ static void GL_BuildCoreDefinitions(void)
 #ifdef RENDERER_OPTION_MODERN_OPENGL
 	GL_DefineProgram_VF(r_program_aliasmodel, "aliasmodel", true, draw_aliasmodel, renderer_modern, GLM_CompileAliasModelProgram);
 	GL_DefineProgram_VF(r_program_brushmodel, "brushmodel", true, draw_world, renderer_modern, GLM_CompileDrawWorldProgram);
+	GL_DefineProgram_VF(r_program_brushmodel_alphatested, "brushmodel-alphatested", true, draw_world, renderer_modern, GLM_CompileDrawWorldProgramAlphaTested);
 	GL_DefineProgram_VF(r_program_sprite3d, "3d-sprites", false, draw_sprites, renderer_modern, GLM_Compile3DSpriteProgram);
 	GL_DefineProgram_VF(r_program_hud_images, "image-draw", true, hud_draw_image, renderer_modern, GLM_CreateMultiImageProgram);
 	GL_DefineProgram_VF(r_program_hud_circles, "circle-draw", false, hud_draw_circle, renderer_modern, GLM_CompileHudCircleProgram);
 	GL_DefineProgram_VF(r_program_post_process, "post-process-screen", true, post_process_screen, renderer_modern, GLM_CompilePostProcessProgram);
 	GL_DefineProgram_CS(r_program_lightmap_compute, "lightmaps", false, lighting, renderer_modern, GLM_CompileLightmapComputeProgram);
 	GL_DefineProgram_VF(r_program_fx_world_geometry, "world-geometry", true, fx_world_geometry, renderer_modern, GLM_CompileWorldGeometryProgram);
+	GL_DefineProgram_VF(r_program_simple, "simple", false, simple, renderer_modern, GLM_CompileSimpleProgram);
 #endif
 
 #ifdef RENDERER_OPTION_CLASSIC_OPENGL

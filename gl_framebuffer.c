@@ -32,7 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 extern cvar_t vid_framebuffer;
 extern cvar_t vid_framebuffer_depthformat;
-extern cvar_t vid_framebuffer_palette;
+extern cvar_t vid_software_palette;
 extern cvar_t vid_framebuffer_hdr;
 extern cvar_t vid_framebuffer_blit;
 extern cvar_t vid_framebuffer_smooth;
@@ -384,8 +384,9 @@ qbool GL_FramebufferStartWorldNormals(framebuffer_id id)
 		}
 
 		GL_TexStorage2D(fb->texture[fbtex_worldnormals], 1, GL_RGBA16F, fb->width, fb->height, false);
-		renderer.TextureSetFiltering(fb->texture[fbtex_worldnormals], texture_minification_nearest, texture_minification_nearest);
+		renderer.TextureSetFiltering(fb->texture[fbtex_worldnormals], texture_minification_nearest, texture_magnification_nearest);
 		renderer.TextureWrapModeClamp(fb->texture[fbtex_worldnormals]);
+		R_TextureSetFlag(fb->texture[fbtex_worldnormals], R_TextureGetFlag(fb->texture[fbtex_worldnormals]) | TEX_NO_TEXTUREMODE);
 	}
 
 	GL_FramebufferTexture(fb->glref, GL_COLOR_ATTACHMENT1, GL_TextureNameFromReference(fb->texture[fbtex_worldnormals]), 0);
@@ -607,7 +608,7 @@ static void VID_FramebufferFlip(void)
 	if (flip3d || flip2d) {
 		// Screen-wide framebuffer without any processing required, so we can just blit
 		qbool should_blit = (
-			vid_framebuffer_palette.integer == 0 &&
+			vid_software_palette.integer == 0 &&
 			vid_framebuffer.integer != USE_FRAMEBUFFER_3DONLY &&
 			vid_framebuffer_blit.integer &&
 			(glConfig.supported_features & R_SUPPORT_FRAMEBUFFERS_BLIT)
@@ -623,6 +624,9 @@ static void VID_FramebufferFlip(void)
 		else {
 			renderer.RenderFramebuffers();
 		}
+	}
+	else if (vid_software_palette.integer) {
+		renderer.RenderFramebuffers();
 	}
 }
 
@@ -678,17 +682,21 @@ void GL_FramebufferPostProcessScreen(void)
 {
 	qbool framebuffer_active = GL_FramebufferEnabled3D() || GL_FramebufferEnabled2D();
 
-	if (framebuffer_active) {
+	if (framebuffer_active || vid_software_palette.integer) {
 		R_Viewport(glx, gly, glConfig.vidWidth, glConfig.vidHeight);
 
 		VID_FramebufferFlip();
 
-		if (!vid_framebuffer_palette.integer) {
+		if (!vid_software_palette.integer) {
+			renderer.BrightenScreen();
+
 			// Hardware palette changes
 			V_UpdatePalette();
 		}
 	}
-	else {
+	else if (!vid_software_palette.integer) {
+		renderer.BrightenScreen();
+
 		// Hardware palette changes
 		V_UpdatePalette();
 	}
@@ -734,7 +742,7 @@ void GL_Screenshot(byte* buffer, size_t size)
 			qglBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 		}
 	}
-	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer);
+	glReadPixels(0, 0, (GLsizei)width, (GLsizei)height, GL_RGB, GL_UNSIGNED_BYTE, buffer);
 }
 
 size_t GL_ScreenshotWidth(void)

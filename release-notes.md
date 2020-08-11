@@ -4,7 +4,7 @@
 
 ### Bugs
 
-- Fix crash to desktop when finding best routes to server and number of proxies too high (old bug)
+- Fix crash to desktop when finding best routes to server and number of proxies too high (old bug, also fixed in 3.5-alpha24 and 3.2.1)
 - When using non-desktop resolution and running fullscreen, image was cropped (3.5 bug, reported by bgnr)
 - HUD renders circles again (affects speed2, radar, itemsclock with certain settings) (3.5 bug, reported by numerous people)
 - Fixed visual artifact around classic particles in classic OpenGL (3.5 bug, reported by hemostick)
@@ -19,13 +19,25 @@
 - `/gl_texturemode` doesn't affect the texture used for framebuffers (3.5 bug, reported by hemostx)
 - When using scaled framebuffer, mouse cursor co-ordinates are correct (3.5 bug, reported by hemostx)
 - When using scaled framebuffer, screenshots use correct dimensions (3.5 bug, reported by homestx)
+- Fix rendering of fullbright textures that aren't luma/external-32bit textures (3.5 bug, reported by ciscon & lurq)
+- `-gamma` command line option now sets `/gl_gamma` default, rather than also setting the gamma adjustment on some in-game textures (old, very old)
+- `gl_detpacklights` now controls if coronas created on detpacks in TF (very old bug, reported by Trickle)
 
 ### Other changes
 
-- MVD player lerping is disabled at the point of a player being gibbed (reported by hangtime)
 - `/cfg_backup` will now not save the config if backup cannot be taken
 - `/vid_framebuffer_smooth` controls linear or nearest filtering (thanks to Calinou)
 - `/vid_framebuffer_sshotmode` controls if screenshot is of framebuffer or screen size
+- `/enemyforceskins` descriptions in `f_ruleset` and `f_skins` responses has been clarified to specify individuals will be identifiable (reported by Ake_Vader)
+- `/enemyforceskins` fixed during match (old)
+- `/r_drawflat_mode` allows textures to be shaded rather than solid color (GLSL only)
+- `/timedemo2` command renders demo in stop-motion at a particular fps
+- `/enemyforceskins 1` will search for player names in lower case (#345)
+- Gamma-shifting is forced on when using MTFL
+- MVD player lerping is disabled at the point of a player being gibbed (reported by hangtime)
+- Player LG beams hidden during intermission (no more beams in screenshots)
+- `-oldgamma` command line option to re-instate old `-gamma` behaviour
+- GLSL gamma now supported in classic renderer
 
 ### Build/meta
 

@@ -179,13 +179,14 @@ static int R_BrushModelPopulateVBO(model_t* m, void* vbo_buffer, int vbo_pos)
 	for (i = 0; i < m->numtextures; ++i) {
 		int length = 0;
 		int surface_count = 0;
-		qbool has_luma = false;
+		qbool has_fb = false, has_luma = false;
 
 		if (!m->textures[i]) {
 			continue;
 		}
 
-		has_luma = R_TextureReferenceIsValid(m->textures[i]->fb_texturenum);
+		has_fb = R_TextureReferenceIsValid(m->textures[i]->fb_texturenum);
+		has_luma = has_fb & m->textures[i]->isLumaTexture;
 		for (j = 0; j < m->nummodelsurfaces; ++j) {
 			msurface_t* surf = m->surfaces + m->firstmodelsurface + j;
 			int lightmap = surf->flags & (SURF_DRAWTURB | SURF_DRAWSKY) ? -1 : surf->lightmaptexturenum;
@@ -209,7 +210,7 @@ static int R_BrushModelPopulateVBO(model_t* m, void* vbo_buffer, int vbo_pos)
 				// Store position for drawing individual polys
 				poly->vbo_start = vbo_pos;
 				for (k = 0; k < poly->numverts; ++k) {
-					vbo_pos = renderer.BrushModelCopyVertToBuffer(m, vbo_buffer, vbo_pos, poly->verts[k], lightmap, material, scaleS, scaleT, surf, has_luma);
+					vbo_pos = renderer.BrushModelCopyVertToBuffer(m, vbo_buffer, vbo_pos, poly->verts[k], lightmap, material, scaleS, scaleT, surf, has_fb, has_luma);
 				}
 
 				length += poly->numverts;
@@ -238,10 +239,7 @@ void R_BrushModelDrawEntity(entity_t *e)
 	float oldMatrix[16];
 	extern cvar_t gl_brush_polygonoffset;
 	qbool caustics = false;
-	extern cvar_t r_drawflat, gl_caustics, gl_flashblend;
-
-	qbool drawFlatFloors = (r_drawflat.integer == 2 || r_drawflat.integer == 1);
-	qbool drawFlatWalls = (r_drawflat.integer == 3 || r_drawflat.integer == 1);
+	extern cvar_t gl_caustics, gl_flashblend;
 
 	// Get rid of Z-fighting for textures by offsetting the
 	// drawing of entity models compared to normal polygons.
@@ -252,9 +250,6 @@ void R_BrushModelDrawEntity(entity_t *e)
 	if (!clmodel->nummodelsurfaces) {
 		return;
 	}
-
-	drawFlatFloors &= clmodel->isworldmodel;
-	drawFlatWalls &= clmodel->isworldmodel;
 
 	if (e->angles[0] || e->angles[1] || e->angles[2]) {
 		rotated = true;
