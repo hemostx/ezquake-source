@@ -1038,6 +1038,16 @@ qbool V_PreRenderView(void)
 			r_refdef2.max_fbskins = *(p = Info_ValueForKey(cl.serverinfo, "fbskins")) ? bound(0, Q_atof(p), 1) : (cl.teamfortress ? 0 : 1);
 			r_refdef2.max_watervis = *(p = Info_ValueForKey(cl.serverinfo, "watervis")) ? bound(0, Q_atof(p), 1) : 0;
 		}
+
+		// time-savers
+		{
+			extern cvar_t r_drawflat_mode, r_drawflat, r_fastturb;
+
+			r_refdef2.wateralpha = R_WaterAlpha();
+			r_refdef2.drawFlatFloors = r_drawflat_mode.integer == 0 && (r_drawflat.integer == 2 || r_drawflat.integer == 1);
+			r_refdef2.drawFlatWalls = r_drawflat_mode.integer == 0 && (r_drawflat.integer == 3 || r_drawflat.integer == 1);
+			r_refdef2.solidTexTurb = (!r_fastturb.integer && r_refdef2.wateralpha == 1);
+		}
 	}
 
 	renderer.PreRenderView();
@@ -1120,18 +1130,20 @@ void V_Init (void) {
 	// we do not need this after host initialized
 	if (!host_initialized) {
 		int i;
-		float def_gamma = v_gamma.value;
+		float def_gamma = 1.0f;
 		extern float vid_gamma;
 
 		if ((i = COM_CheckParm(cmdline_param_client_gamma)) != 0 && i + 1 < COM_Argc()) {
 			def_gamma = Q_atof(COM_Argv(i + 1));
+			def_gamma = bound(0.3, def_gamma, 3);
+			Cvar_SetDefaultAndValue(&v_gamma, def_gamma, def_gamma);
+			vid_gamma = def_gamma;
+		}
+		else {
+			vid_gamma = 1.0;
 		}
 
-		def_gamma = bound(0.3, def_gamma, 3);
-		Cvar_SetDefaultAndValue(&v_gamma, def_gamma, def_gamma);
 		v_gamma.modified = true;
-
-		vid_gamma = def_gamma;
 	}
 	Cvar_ResetCurrentGroup();
 }

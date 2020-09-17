@@ -32,6 +32,8 @@ $Id: client.h,v 1.74 2007-10-12 00:08:42 cokeman1982 Exp $
 #define __attribute__(A) /**/
 #endif
 
+#define MAXWEAPONS 10
+
 #define MAX_STATIC_SOUNDS 256
 typedef struct
 {
@@ -434,10 +436,12 @@ typedef struct
 	char        demoname[MAX_PATH];
 	qbool       nqdemoplayback;
 	int         timedemo;
-	double      td_lastframe;       ///< To meter out one message a frame.
-	int         td_startframe;      ///< cls.framecount at start
-	double      td_starttime;       ///< Realtime at second frame of timedemo.
-	double      td_frametime;       ///< frametime for stop-motion timedemo (timedemo2)
+	double      td_lastframe;              ///< To meter out one message a frame.
+	int         td_startframe;             ///< cls.framecount at start
+	double      td_starttime;              ///< Realtime at second frame of timedemo.
+	double      td_frametime;              ///< frametime for stop-motion timedemo (timedemo2)
+	int         td_frametime_stats[1000];  ///< keep track of performance (to 0.1ms level, if it's over 100ms we're in bad shape)
+	double      td_nonrendering;           ///< time not in the rendering hot loop
 
 	qbool		mvdrecording;		///< this is not real mvd recording, but just cut particular moment of mvd stream
 
@@ -645,6 +649,10 @@ typedef struct {
 	// r_viewmodellastfired
 	int         lastfired;
 	int         lastviewplayernum;
+
+	// Weapon preferences
+	int         weapon_order[MAXWEAPONS];
+	int         weapon_order_sequence_set;
 } clientState_t;
 
 #define SCORING_SYSTEM_DEFAULT   0
