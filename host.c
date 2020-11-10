@@ -47,6 +47,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "config_manager.h"
 #include "EX_qtvlist.h"
 #include "r_renderer.h"
+#include "central.h"
 
 double		curtime;
 
@@ -465,6 +466,8 @@ void Host_Frame (double time)
 	curtime += time;
 
 	CL_Frame (time);	// will also call SV_Frame
+
+	Central_ProcessResponses();
 }
 
 char *Host_PrintBars(char *s, int len)
@@ -646,6 +649,13 @@ void Host_Init (int argc, char **argv, int default_memsize)
 	FS_InitFilesystem ();
 	NET_Init ();
 
+#ifdef WITH_RENDERING_TRACE
+	// Start immediately: (have to wait until filesystem is started up so we know where to save files)
+	if (COM_CheckParm(cmdline_param_client_video_r_trace)) {
+		Dev_VidFrameStart();
+	}
+#endif
+
 	Commands_For_Configs_Init ();
 	Host_RegisterLegacyCvars();
 	Browser_Init2();
@@ -682,6 +692,7 @@ void Host_Init (int argc, char **argv, int default_memsize)
 	SV_Init ();
 #endif
 	CL_Init ();
+	Central_Init();
 
 	Cvar_CleanUpTempVars ();
 
@@ -747,6 +758,9 @@ void Host_Init (int argc, char **argv, int default_memsize)
 		}
 	}
 
+	// Trigger changes config has made to defaults
+	Cvar_ExecuteQueuedChanges();
+
 	host_everything_loaded = true;
 #ifdef DEBUG_MEMORY_ALLOCATIONS
 	Sys_Printf("\nevent,init\n");
@@ -774,6 +788,7 @@ void Host_Shutdown (void)
 	SV_Shutdown ("Server quit\n");
 #endif
 
+	Central_Shutdown();
 	CL_Shutdown ();
 	NET_Shutdown ();
 	Con_Shutdown();

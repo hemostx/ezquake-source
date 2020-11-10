@@ -44,6 +44,9 @@ $Id: cl_parse.c,v 1.135 2007-10-28 19:56:44 qqshka Exp $
 #include "input.h"
 #include "qtv.h"
 #include "r_brushmodel_sky.h"
+#include "central.h"
+
+int CL_LoginImageId(const char* name);
 
 void R_TranslatePlayerSkin (int playernum);
 
@@ -195,8 +198,10 @@ static void CL_Messages_f(void)
 
 		svc = messages[i].svc;
 
-		if (svc < 0 || svc >= NUMMSG)
+		if (svc < 0 || svc >= NUMMSG) {
 			Sys_Error("CL_Messages_f: svc < 0 || svc >= NUMMSG");
+			return;
+		}
 
 		svc_name = ( svc < num_svc_strings ? svc_strings[svc] : "unknown" );
 
@@ -458,7 +463,7 @@ int CL_CalcNetStatistics(
 //=============================================================================
 
 // Returns true if the file exists, otherwise it attempts to start a download from the server.
-qbool CL_CheckOrDownloadFile (char *filename) 
+qbool CL_CheckOrDownloadFile(char *filename)
 {
 	vfsfile_t *f;
 	char *tmp;
@@ -474,8 +479,7 @@ qbool CL_CheckOrDownloadFile (char *filename)
 	}
 
 	f = FS_OpenVFS(filename, "rb", FS_ANY);
-	if (f) 
-	{
+	if (f) {
 		VFS_CLOSE(f);
 		return true;
 	}
@@ -2096,6 +2100,43 @@ void CL_ProcessUserInfo(int slot, player_info_t *player, char *key)
 	else if (!strcasecmp(player->team, cl.fixed_team_names[3])) {
 		player->known_team_color = 11;
 	}
+
+	// login info
+	strlcpy(player->loginname, Info_ValueForKey(player->userinfo, "*auth"), sizeof(player->loginname));
+	strlcpy(player->loginflag, Info_ValueForKey(player->userinfo, "*flag"), sizeof(player->loginflag));
+	player->loginflag_id = CL_LoginImageId(player->loginflag);
+
+	// gender
+	{
+		char* userinfo_gender = Info_ValueForKey(player->userinfo, "gender");
+		if (!*userinfo_gender) {
+			userinfo_gender = Info_ValueForKey(player->userinfo, "g");
+		}
+
+		player->gender = gender_unknown;
+		if (userinfo_gender && userinfo_gender[0]) {
+			char gender = userinfo_gender[0];
+			if (gender == '0' || gender == 'M') {
+				player->gender = gender_male;
+			}
+			else if (gender == '1' || gender == 'F') {
+				player->gender = gender_female;
+			}
+			else if (gender == '2' || gender == 'N') {
+				player->gender = gender_neutral;
+			}
+		}
+	}
+
+	// chat status
+	{
+		char* s = Info_ValueForKey(player->userinfo, "chat");
+
+		player->chatflag = 0;
+		if (s && s[0]) {
+			player->chatflag = Q_atoi(s);
+		}
+	}
 }
 
 void CL_NotifyOnFull(void)
@@ -2121,8 +2162,7 @@ void CL_PlayerEnterSlot(player_info_t *player)
 {
 	extern player_state_t oldplayerstates[MAX_CLIENTS];
 
-	player->ignored = player->validated = false;
-	player->f_server[0] = 0;
+	player->ignored = false;
 	memset(&oldplayerstates[player - cl.players], 0, sizeof(player_state_t));
 	Stats_EnterSlot(player - cl.players);
 	CL_NotifyOnFull();
@@ -3169,6 +3209,29 @@ void CL_ParseStufftext (void)
 			Cbuf_AddTextEx(&cbuf_svc, va("f_qtvfinalscores %s\n", s + sizeof("//finalscores ") - 1));
 		}
 	}
+	else if (!strcmp(s, "//authprompt\n")) {
+		if (!cls.demoplayback) {
+			extern cvar_t cl_username;
+
+			if (cls.auth_logintoken[0] && cl_username.string[0]) {
+				Cbuf_AddTextEx(&cbuf_main, va("cmd login %s\n", cl_username.string));
+			}
+		}
+	}
+	else if (!strncmp(s, "//challenge ", sizeof("//challenge ") - 1)) {
+		if (!cls.demoplayback) {
+			Cmd_TokenizeString(s + 2);
+
+			if (Cmd_Argc() >= 2) {
+				strlcpy(cl.auth_challenge, Cmd_Argv(1), sizeof(cl.auth_challenge));
+
+				if (cls.auth_logintoken[0]) {
+					Central_FindChallengeResponse(cls.auth_logintoken, cl.auth_challenge);
+				}
+			}
+		}
+	}
+
 	else
 	{
 		Cbuf_AddTextEx(&cbuf_svc, s);
@@ -3183,8 +3246,10 @@ void CL_SetStat (int stat, int value)
 {
 	int	j;
 
-	if (stat < 0 || stat >= MAX_CL_STATS)
-		Host_Error ("CL_SetStat: %i is invalid", stat);
+	if (stat < 0 || stat >= MAX_CL_STATS) {
+		Host_Error("CL_SetStat: %i is invalid", stat);
+		return;
+	}
 
 	// Set the stat value for the current player we're parsing in the MVD.
 	if (cls.mvdplayback)

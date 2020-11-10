@@ -85,6 +85,7 @@ cvar_t    gl_powerupshells_effect1level = { "gl_powerupshells_effect1level", "0.
 cvar_t    gl_powerupshells_base1level = { "gl_powerupshells_base1level", "0.05" };
 cvar_t    gl_powerupshells_effect2level = { "gl_powerupshells_effect2level", "0.4" };
 cvar_t    gl_powerupshells_base2level = { "gl_powerupshells_base2level", "0.1" };
+cvar_t    gl_custom_grenade_tf = { "gl_custom_grenade_tf", "1" };
 
 float     r_framelerp;
 
@@ -567,6 +568,10 @@ void R_AliasSetupLighting(entity_t *ent)
 		}
 	}
 
+	if (clmodel->modhint == MOD_GRENADE && !gl_custom_grenade_tf.integer && cl.teamfortress) {
+		ent->custom_model = NULL;
+	}
+
 	if (ent->custom_model && ent->custom_model->fullbright_cvar.integer) {
 		ent->ambientlight = 4096;
 		ent->shadelight = 0;
@@ -727,6 +732,7 @@ void R_InitAliasModelCvars(void)
 	Cvar_Register(&gl_powerupshells_effect1level);
 	Cvar_Register(&gl_powerupshells_base2level);
 	Cvar_Register(&gl_powerupshells_effect2level);
+	Cvar_Register(&gl_custom_grenade_tf);
 }
 
 void Mod_LoadAliasModel(model_t *mod, void *buffer, int filesize, const char* loadname)
@@ -771,26 +777,31 @@ void Mod_LoadAliasModel(model_t *mod, void *buffer, int filesize, const char* lo
 	pheader->skinwidth = LittleLong(pinmodel->skinwidth);
 	pheader->skinheight = LittleLong(pinmodel->skinheight);
 
-	if (pheader->skinheight > MAX_LBM_HEIGHT)
+	if (pheader->skinheight > MAX_LBM_HEIGHT) {
 		Host_Error("Mod_LoadAliasModel: model %s has a skin taller than %d", mod->name, MAX_LBM_HEIGHT);
+	}
 
 	pheader->numverts = LittleLong(pinmodel->numverts);
 
-	if (pheader->numverts <= 0)
+	if (pheader->numverts <= 0) {
 		Host_Error("Mod_LoadAliasModel: model %s has no vertices", mod->name);
+	}
 
-	if (pheader->numverts > MAXALIASVERTS)
+	if (pheader->numverts > MAXALIASVERTS) {
 		Host_Error("Mod_LoadAliasModel: model %s has too many vertices", mod->name);
+	}
 
 	pheader->numtris = LittleLong(pinmodel->numtris);
 
-	if (pheader->numtris <= 0)
+	if (pheader->numtris <= 0) {
 		Host_Error("Mod_LoadAliasModel: model %s has no triangles", mod->name);
+	}
 
 	pheader->numframes = LittleLong(pinmodel->numframes);
 	numframes = pheader->numframes;
-	if (numframes < 1)
-		Host_Error("Mod_LoadAliasModel: Invalid # of frames: %d\n", numframes);
+	if (numframes < 1) {
+		Host_Error("Mod_LoadAliasModel: model %s has invalid # of frames: %d\n", mod->name, numframes);
+	}
 
 	pheader->size = LittleFloat(pinmodel->size) * ALIAS_BASE_SIZE_RATIO;
 	mod->synctype = LittleLong(pinmodel->synctype);
@@ -822,7 +833,10 @@ void Mod_LoadAliasModel(model_t *mod, void *buffer, int filesize, const char* lo
 		triangles[i].facesfront = LittleLong(pintriangles[i].facesfront);
 
 		for (j = 0; j < 3; j++) {
-			triangles[i].vertindex[j] = LittleLong(pintriangles[i].vertindex[j]);
+			int index = triangles[i].vertindex[j] = LittleLong(pintriangles[i].vertindex[j]);
+			if (index < 0 || index >= pheader->numverts) {
+				Host_Error("Mod_LoadAliasModel: model %s has invalid vertex ref (%d/%d)\n", mod->name, index, pheader->numverts);
+			}
 		}
 	}
 

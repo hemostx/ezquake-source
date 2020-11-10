@@ -84,6 +84,9 @@ void CL_QWURL_ProcessChallenge(const char *parameters);
 
 // cl_input.c
 void onchange_pext_serversideweapon(cvar_t* var, char* value, qbool* cancel);
+void onchange_hud_performance_average(cvar_t* var, char* value, qbool* cancel);
+
+static void AuthUsernameChanged(cvar_t* var, char* value, qbool* cancel);
 
 cvar_t	allow_scripts = {"allow_scripts", "2", 0, Rulesets_OnChange_allow_scripts};
 cvar_t	rcon_password = {"rcon_password", ""};
@@ -133,6 +136,8 @@ cvar_t	cl_solid_players = {"cl_solid_players", "1"};
 cvar_t	cl_predict_half = {"cl_predict_half", "0"};
 
 cvar_t	hud_fps_min_reset_interval = {"hud_fps_min_reset_interval", "30"};
+cvar_t  hud_frametime_max_reset_interval = { "hud_frametime_max_reset_interval", "30" };
+cvar_t  hud_performance_average = { "hud_performance_average", "1", 0, onchange_hud_performance_average };
 
 cvar_t  localid = {"localid", ""};
 
@@ -235,6 +240,10 @@ cvar_t cl_verify_qwprotocol     = {"cl_verify_qwprotocol", "1"};
 
 cvar_t demo_autotrack           = {"demo_autotrack", "0"}; // use or not autotrack info from mvd demos
 
+// Authentication
+cvar_t cl_username              = {"cl_username", "", CVAR_QUEUED_TRIGGER, AuthUsernameChanged};
+static void CL_Authenticate_f(void);
+
 /// persistent client state
 clientPersistent_t	cls;
 
@@ -259,7 +268,6 @@ qbool	host_skipframe;			// used in demo playback
 byte		*host_basepal = NULL;
 byte		*host_colormap = NULL;
 
-int		fps_count;
 qbool physframe;
 double physframetime;
 
@@ -1690,6 +1698,8 @@ static void CL_InitLocal (void)
 	Cvar_Register (&cl_maxfps);
 	Cvar_Register (&cl_physfps);
 	Cvar_Register (&hud_fps_min_reset_interval);
+	Cvar_Register (&hud_frametime_max_reset_interval);
+	Cvar_Register (&hud_performance_average);
 	Cvar_Register (&cl_physfps_spectator);
 	Cvar_Register (&cl_independentPhysics);
 	Cvar_Register (&cl_deadbodyfilter);
@@ -1807,6 +1817,9 @@ static void CL_InitLocal (void)
 	Cvar_ForceSet (&cl_cmdline, com_args_original);
 	Cvar_ResetCurrentGroup();
 
+	Cvar_Register (&cl_username);
+	Cmd_AddCommand("authenticate", CL_Authenticate_f);
+
 	snprintf(st, sizeof(st), "ezQuake %i", REVISION);
 
 	if (COM_CheckParm (cmdline_param_client_norjscripts) || COM_CheckParm (cmdline_param_client_noscripts))
@@ -1855,10 +1868,6 @@ static void CL_InitLocal (void)
 
 #ifdef WITH_RENDERING_TRACE
 	if (R_DebugProfileContext()) {
-		extern void Dev_VidFrameTrace(void);
-		extern void Dev_VidTextureDump(void);
-		extern void Dev_TextureList(void);
-
 		Cmd_AddCommand("dev_gfxtrace", Dev_VidFrameTrace);
 		Cmd_AddCommand("dev_gfxtexturedump", Dev_VidTextureDump);
 		Cmd_AddCommand("dev_gfxtexturelist", Dev_TextureList);
@@ -1925,6 +1934,7 @@ void CL_Init (void)
 
 	cls.state = ca_disconnected;
 	cls.min_fps = 999999;
+	cls.max_frametime = 1;
 
 	SZ_Init(&cls.cmdmsg, cls.cmdmsg_data, sizeof(cls.cmdmsg_data));
 	cls.cmdmsg.allowoverflow = true;
@@ -2091,32 +2101,63 @@ static double MinPhysFrameTime (void)
 	return 1 / fpscap;
 }
 
+void onchange_hud_performance_average(cvar_t* var, char* value, qbool* cancel)
+{
+	// Reset on change
+	if (strcmp(var->string, value)) {
+		Cl_Reset_Min_fps_f();
+	}
+}
+
 void CL_CalcFPS(void)
 {
-	static double lastfps;
-	static double last_frame_time;
-	static double time_of_last_minfps_update;
-
 	double t = Sys_DoubleTime();
+	perfinfo_t* stats = &cls.fps_stats;
+	double frametime = stats->last_run_time == 0 ? 0 : t - stats->last_run_time;
+	double time_since_snapshot = (t - stats->last_snapshot_time);
+	stats->last_run_time = t;
 
-	if ((t - last_frame_time) >= 1.0)
+	// Average over previous second
+	if (time_since_snapshot >= 1.0)
 	{
-		lastfps = (double)fps_count / (t - last_frame_time);
-		fps_count = 0;
-		last_frame_time = t;
+		stats->lastfps_value = (double)stats->fps_count / time_since_snapshot;
+		stats->lastframetime_value = time_since_snapshot / max(stats->fps_count, 1);
+		stats->fps_count = 0;
+		stats->last_snapshot_time = t;
 	}
 
-	cls.fps = lastfps;
-	// update min_fps if last fps is less than our lowest accepted minfps (10.0) or greater than min_reset_interval
-	if ((lastfps > 10.0 && lastfps < cls.min_fps) || ((t - time_of_last_minfps_update) > hud_fps_min_reset_interval.value)) { 
-		cls.min_fps = lastfps;
-		time_of_last_minfps_update = t;
+	cls.fps = stats->lastfps_value;
+	cls.avg_frametime = stats->lastframetime_value;
+
+	if (hud_performance_average.integer) {
+		// update min_fps if last fps is less than our lowest accepted minfps (10.0) or greater than min_reset_interval
+		if ((stats->lastfps_value > 10.0 && stats->lastfps_value < cls.min_fps) || ((t - stats->time_of_last_minfps_update) > hud_fps_min_reset_interval.value)) {
+			cls.min_fps = stats->lastfps_value;
+			stats->time_of_last_minfps_update = t;
+		}
+		if ((stats->lastframetime_value < 2.0f && stats->lastframetime_value > cls.max_frametime) || ((t - stats->time_of_last_maxframetime_update) > hud_frametime_max_reset_interval.value)) {
+			cls.max_frametime = stats->lastframetime_value;
+			stats->time_of_last_maxframetime_update = t;
+		}
+	}
+	else if (frametime > 0) {
+		// update min_fps if last fps is less than our lowest accepted minfps (10.0) or greater than min_reset_interval
+		if (stats->lastfps_value < cls.min_fps || ((t - stats->time_of_last_minfps_update) > hud_fps_min_reset_interval.value)) {
+			cls.min_fps = stats->lastfps_value;
+			stats->time_of_last_minfps_update = t;
+		}
+		if (frametime > cls.max_frametime || ((t - stats->time_of_last_maxframetime_update) > hud_frametime_max_reset_interval.value)) {
+			cls.max_frametime = frametime;
+			stats->time_of_last_maxframetime_update = t;
+		}
 	}
 }
 
 void Cl_Reset_Min_fps_f(void)
 {
-	cls.min_fps = 9999;
+	cls.min_fps = 9999.0f;
+	cls.max_frametime = 0.0f;
+
 	CL_CalcFPS();
 }
 
@@ -2353,16 +2394,16 @@ void CL_Frame(double time)
 
 		// We need to move the mouse also when disconnected
 		// to get the cursor working properly.
-		if(cls.state == ca_disconnected)
-		{
+		if (cls.state == ca_disconnected) {
 			usercmd_t dummy;
 			IN_Move(&dummy);
 		}
+
+		Sys_SendDeferredKeyEvents();
 	}
 	else 
 	{
-		if (physframe)
-		{
+		if (physframe) {
 			Sys_SendKeyEvents();
 
 			// allow mice or other external controllers to add commands
@@ -2397,14 +2438,15 @@ void CL_Frame(double time)
 
 			CL_SendToServer();
 
-			if (cls.state == ca_disconnected) // We need to move the mouse also when disconnected
-			{
+			// We need to move the mouse also when disconnected
+			if (cls.state == ca_disconnected) {
 				usercmd_t dummy;
 				IN_Move(&dummy);
 			}
+
+			Sys_SendDeferredKeyEvents();
 		}
-		else
-		{
+		else {
 			if (need_server_frame && com_serveractive) {
 				CL_ServerFrame(0);
 			}
@@ -2465,6 +2507,7 @@ void CL_Frame(double time)
 
 		R_PerformanceBeginFrame();
 		if (SCR_UpdateScreenPrePlayerView()) {
+			qbool two_pass_rendering = GL_FramebufferEnabled2D();
 			renderer.ScreenDrawStart();
 
 			while (draw_next_view) {
@@ -2479,9 +2522,14 @@ void CL_Frame(double time)
 
 				SCR_CalcRefdef();
 
-				SCR_UpdateScreenPlayerView(draw_next_view ? 0 : UPDATESCREEN_POSTPROCESS);
+				SCR_UpdateScreenPlayerView((draw_next_view ? 0 : UPDATESCREEN_POSTPROCESS) | (two_pass_rendering ? UPDATESCREEN_3D_ONLY : 0));
 
-				SCR_DrawMultiviewIndividualElements();
+				if (!two_pass_rendering) {
+					SCR_DrawMultiviewIndividualElements();
+				}
+				else {
+					SCR_SaveAutoID();
+				}
 
 				if (CL_MultiviewCurrentView() == 2 || (CL_MultiviewCurrentView() == 1 && CL_MultiviewActiveViews() == 1)) {
 					CL_SoundFrame();
@@ -2489,6 +2537,24 @@ void CL_Frame(double time)
 
 				// Multiview: advance to next player
 				CL_MultiviewFrameFinish();
+			}
+
+			if (two_pass_rendering) {
+				buffers.EndFrame();
+
+				draw_next_view = true;
+				while (draw_next_view) {
+					draw_next_view = CL_MultiviewAdvanceView();
+
+					// Need to call this again to keep autoid correct
+					SCR_RestoreAutoID();
+
+					SCR_UpdateScreenPlayerView(UPDATESCREEN_2D_ONLY);
+					SCR_DrawMultiviewIndividualElements();
+
+					// Multiview: advance to next player
+					CL_MultiviewFrameFinish();
+				}
 			}
 
 			SCR_UpdateScreenPostPlayerView();
@@ -2519,7 +2585,7 @@ void CL_Frame(double time)
 	}
 
 	cls.framecount++;
-	fps_count++;
+	cls.fps_stats.fps_count++;
 	CL_CalcFPS();
 
 	VFS_TICK(); // VFS hook for updating some systems
@@ -2570,23 +2636,25 @@ void CL_Shutdown (void)
 
 void CL_UpdateCaption(qbool force)
 {
-	static char caption[512] = {0};
-	char str[512] = {0};
+	static char caption[512] = { 0 };
+	char str[512] = { 0 };
 
-	if (!cl_window_caption.value)
-	{
-		if (!cls.demoplayback && (cls.state == ca_active))
+	if (!cl_window_caption.value) {
+		if (!cls.demoplayback && (cls.state == ca_active)) {
 			snprintf(str, sizeof(str), "ezQuake: %s", cls.servername);
-		else
+		}
+		else {
 			snprintf(str, sizeof(str), "ezQuake");
+		}
 	}
-	else
-	{
+	else if (cl_window_caption.integer == 1) {
 		snprintf(str, sizeof(str), "%s - %s", CL_Macro_Serverstatus(), MT_ShortStatus());
 	}
+	else if (cl_window_caption.integer == 2) {
+		snprintf(str, sizeof(str), "ezQuake");
+	}
 
-	if (force || strcmp(str, caption))
-	{
+	if (force || strcmp(str, caption)) {
 		VID_SetCaption(str);
 		strlcpy(caption, str, sizeof(caption));
 	}
@@ -2737,4 +2805,92 @@ void Cache_Flush(void)
 {
 	Skin_Clear(false);
 	Mod_FreeAllCachedData();
+}
+
+static void AuthUsernameChanged(cvar_t* var, char* value, qbool* cancel)
+{
+	char path[MAX_PATH];
+	char filename[MAX_PATH];
+	byte* auth_token;
+	int auth_token_length;
+	int len = strlen(value);
+	int i;
+
+	// Don't validate if no changes
+	if (!strcmp(var->string, value)) {
+		return;
+	}
+
+	// Validate new name
+	for (i = 0; i < len; ++i) {
+		if (isalpha(value[i]) || isdigit(value[i]))
+			continue;
+		if (value[i] == '_' || value[i] == '[' || value[i] == ']' || value[i] == '(' || value[i] == ')' || value[i] == '.' || value[i] == '-')
+			continue;
+		// TODO: others
+
+		// Illegal
+		Com_Printf("Illegal character %c in username\n", value[i]);
+		*cancel = true;
+		return;
+	}
+
+	if (!value[0]) {
+		// Logging out...
+		if (cls.state == ca_active && cl.players[cl.playernum].loginname[0]) {
+			Cbuf_AddTextEx(&cbuf_main, "cmd logout\n");
+		}
+		memset(cls.auth_logintoken, 0, sizeof(cls.auth_logintoken));
+		return;
+	}
+	
+	// FIXME: server-side, treat new login request as logout?
+	if (cls.state == ca_active && cl.players[cl.playernum].loginname[0]) {
+		Com_Printf("You are logged in to the server & must logout first\n");
+		*cancel = true;
+		return;
+	}
+
+	// Try and load login token
+	strlcpy(filename, value, sizeof(filename));
+	COM_ForceExtensionEx(filename, ".apikey", sizeof(filename));
+
+	Cfg_GetConfigPath(path, sizeof(path), filename);
+
+	auth_token = FS_LoadTempFile(path, &auth_token_length);
+	if (auth_token == 0) {
+		Com_Printf("Unable to load authentication token for '%s'\n", value);
+		*cancel = true;
+		return;
+	}
+	else {
+		strlcpy(cls.auth_logintoken, (const char*)auth_token, sizeof(cls.auth_logintoken));
+		memset(cl.auth_challenge, 0, sizeof(cl.auth_challenge));
+		if (cls.state == ca_active) {
+			Cbuf_AddTextEx(&cbuf_main, va("cmd login %s\n", value));
+		}
+	}
+}
+
+static void CL_Authenticate_f(void)
+{
+	if (!cls.auth_logintoken[0] || !cl_username.string[0]) {
+		Com_Printf("You must load a login token by setting cl_username first.\n");
+		Com_Printf("Login tokens must be located in your configuration directory\n");
+		return;
+	}
+
+	if (cls.state != ca_active) {
+		Com_Printf("Cannot authenticate, not connected\n");
+		return;
+	}
+
+	if (cl.players[cl.playernum].loginname[0]) {
+		Com_Printf("Logging out...\n");
+		Cbuf_AddTextEx(&cbuf_main, "cmd logout\n");
+		return;
+	}
+
+	Com_Printf("Starting authentication process...\n");
+	Cbuf_AddTextEx(&cbuf_main, va("cmd login \"%s\"\n", cl_username.string));
 }

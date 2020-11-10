@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // meag: for switching back to 3d resolution to draw the multiview outlines
 #include "gl_model.h"
 #include "gl_local.h"
+#include "mvd_utils.h"
 
 extern int glx, gly, glwidth, glheight;
 
@@ -806,9 +807,6 @@ void SCR_DrawMVStatusStrings (void)
 
 	int i;
 
-	extern int powerup_cam_active, cam_1, cam_2, cam_3, cam_4;
-	extern cvar_t mvd_pc_view_1, mvd_pc_view_2, mvd_pc_view_3, mvd_pc_view_4;
-
 	// Only in MVD.
 	if (!cl_multiview.value || !cls.mvdplayback) {
 		return;
@@ -980,27 +978,10 @@ void SCR_DrawMVStatusStrings (void)
 	}
 
 	//
-	// Powerup cam stuff.
+	// Powerup cam stuff: (don't display links if we're using fixed camera position)
 	//
-	if (CURRVIEW == 1 && mvd_pc_view_1.string && strlen (mvd_pc_view_1.string) && powerup_cam_active && cam_1) {
-		sAmmo[0] = '\0';
-		strng[0] = '\0';
-		weapons[0] = '\0';
-	}
-	else if (CURRVIEW == 2 && mvd_pc_view_2.string && strlen (mvd_pc_view_2.string) && powerup_cam_active && cam_2) {
-		sAmmo[0] = '\0';
-		strng[0] = '\0';
-		weapons[0] = '\0';
-	}
-	else if (CURRVIEW == 3 && mvd_pc_view_3.string && strlen (mvd_pc_view_3.string) && powerup_cam_active && cam_3) {
-		sAmmo[0] = '\0';
-		strng[0] = '\0';
-		weapons[0] = '\0';
-	}
-	else if (CURRVIEW == 4 && mvd_pc_view_4.string && strlen (mvd_pc_view_4.string) && powerup_cam_active && cam_4) {
-		sAmmo[0] = '\0';
-		strng[0] = '\0';
-		weapons[0] = '\0';
+	if (MVD_PowerupCam_Enabled()) {
+		sAmmo[0] = strng[0] = weapons[0] = '\0';
 	}
 
 	//
@@ -1101,10 +1082,6 @@ void SCR_DrawMVStatusStrings (void)
 			xd = vid.width - strlen (weapons) * 8 - 84;
 			yd = vid.height - sb_lines - 8;
 		}
-	}
-
-	if (cl_multiview.value == 2 && cl_mvinset.value) {
-		memcpy (cl.stats, cl.players[nTrack1duel].stats, sizeof (cl.stats));
 	}
 
 	// Hud info
@@ -1718,31 +1695,27 @@ void SCR_DrawMultiviewBorders(void)
 	//
 	// Draw black borders around the views.
 	//
-	if (cl_multiview.value == 2 && !cl_mvinset.value)
-	{
+	if (cl_multiview.integer == 2 && !cl_mvinset.integer) {
 		Draw_Fill(0, vid.height / 2, vid.width - 1, 1, 0);
 	}
-	else if (cl_multiview.value == 2 && cl_mvinset.value)
-	{
+	else if (cl_multiview.integer == 2 && cl_mvinset.integer) {
 		extern byte color_black[4];
 
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(0, glwidth, 0, glheight, -99999, 99999);
+		GL_BuiltinProcedure(glMatrixMode, "mode=PROJECTION", GL_PROJECTION);
+		GL_BuiltinProcedure(glLoadIdentity, "");
+		GL_BuiltinProcedure(glOrtho, "left=%f, right=%f, bottom=%f, top=%f, near=%f, far=%f", 0, glwidth, 0, glheight, -99999, 99999);
 
 		Draw_AlphaRectangleRGB(inset_x, inset_y, inset_width, inset_height, 1.0f, false, RGBAVECT_TO_COLOR(color_black));
 
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(0, vid.width, vid.height, 0, -99999, 99999);
+		GL_BuiltinProcedure(glMatrixMode, "mode=PROJECTION", GL_PROJECTION);
+		GL_BuiltinProcedure(glLoadIdentity, "");
+		GL_BuiltinProcedure(glOrtho, "left=%f, right=%f, bottom=%f, top=%f, near=%f, far=%f", 0, vid.width, vid.height, 0, -99999, 99999);
 	}
-	else if (cl_multiview.value == 3)
-	{
+	else if (cl_multiview.integer == 3) {
 		Draw_Fill(vid.width / 2, vid.height / 2, 1, vid.height / 2, 0);
 		Draw_Fill(0, vid.height / 2, vid.width, 1, 0);
 	}
-	else if (cl_multiview.value == 4)
-	{
+	else if (cl_multiview.integer == 4) {
 		Draw_Fill(vid.width / 2, 0, 1, vid.height, 0);
 		Draw_Fill(0, vid.height / 2, vid.width, 1, 0);
 	}
@@ -1761,4 +1734,11 @@ centity_t* CL_WeaponModelForView(void)
 	int view = bound(0, CURRVIEW - 1, MV_VIEWS - 1);
 
 	return &cl.viewent[view];
+}
+
+void CL_MultiviewInsetRestoreStats(void)
+{
+	if (cl_multiview.value == 2 && cl_mvinset.integer) {
+		memcpy(cl.stats, cl.players[nTrack1duel].stats, sizeof(cl.stats));
+	}
 }

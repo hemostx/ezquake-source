@@ -105,6 +105,13 @@ typedef struct
 } player_state_t;
 
 #define	MAX_SCOREBOARDNAME	16
+typedef enum {
+	gender_unknown = 0,
+	gender_male,
+	gender_female,
+	gender_neutral
+} gender_id;
+
 typedef struct player_info_s 
 {
 	int		userid;
@@ -142,8 +149,6 @@ typedef struct player_info_s
 	qbool	skin_refresh;
 	qbool	ignored;                // for ignore
 	qbool   vignored;               // for voip-ignore
-	qbool	validated;              // for authentication
-	char	f_server[16];           // for f_server responses
 
 	// VULT DEATH EFFECT
 	// Better putting the dead flag here instead of on the entity so whats dead stays dead
@@ -154,11 +159,20 @@ typedef struct player_info_s
 	char	_team[MAX_INFO_STRING];
 	int     known_team_color;
 
-	// 
+	// used for showing stack/health bar hud elements
 	double  max_health_last_set;
 	int     max_health;
 	double  prev_health_last_set;
 	int     prev_health;
+
+	// authentication
+	char	loginname[MAX_SCOREBOARDNAME];
+	char    loginflag[8];
+	int     loginflag_id;
+
+	// extracted from userinfo
+	int           chatflag;
+	gender_id     gender;
 } __attribute__((aligned(64))) player_info_t;
 
 
@@ -335,6 +349,16 @@ typedef struct {
 #define TIMEDEMO_FIXEDFPS_MINIMUM (20)
 #define TIMEDEMO_FIXEDFPS_MAXIMUM (10000)
 
+typedef struct {
+	double last_snapshot_time;
+	double last_run_time;
+	double lastfps_value;
+	double lastframetime_value;
+	double time_of_last_minfps_update;
+	double time_of_last_maxframetime_update;
+	int fps_count;
+} perfinfo_t;
+
 /// A structure that is persistent through an arbitrary number of server connections.
 typedef struct
 {
@@ -441,6 +465,8 @@ typedef struct
 	double      td_starttime;              ///< Realtime at second frame of timedemo.
 	double      td_frametime;              ///< frametime for stop-motion timedemo (timedemo2)
 	int         td_frametime_stats[1000];  ///< keep track of performance (to 0.1ms level, if it's over 100ms we're in bad shape)
+	int         td_frametime_max;          ///< worse ms score so far
+	int         td_frametime_max_frame;    ///< which frame# did we get that on?
 	double      td_nonrendering;           ///< time not in the rendering hot loop
 
 	qbool		mvdrecording;		///< this is not real mvd recording, but just cut particular moment of mvd stream
@@ -448,8 +474,13 @@ typedef struct
 	byte		demomessage_data[MAX_MSGLEN * 2];
 	sizebuf_t	demomessage;
 
-	double		fps;
-	double		min_fps;
+	double      fps;
+	double      min_fps;
+	double      avg_frametime;
+	double      max_frametime;
+
+	// FPS stats for performance info
+	perfinfo_t  fps_stats;
 
 	int			challenge;
 
@@ -471,6 +502,8 @@ typedef struct
 	int			lasttype;		///< The type of the last demo message.
 	qbool		findtrack;
 
+	// authenticating via web server
+	char        auth_logintoken[128];
 } clientPersistent_t;
 
 extern clientPersistent_t	cls;
@@ -653,6 +686,9 @@ typedef struct {
 	// Weapon preferences
 	int         weapon_order[MAXWEAPONS];
 	int         weapon_order_sequence_set;
+
+	// authenticating via web server
+	char        auth_challenge[128];
 } clientState_t;
 
 #define SCORING_SYSTEM_DEFAULT   0
@@ -802,6 +838,7 @@ void Demo_AdjustSpeed(void);
 qbool CL_IsDemoExtension(const char *filename);
 qbool CL_Demo_SkipMessage(qbool skip_if_seeking);
 qbool CL_Demo_NotForTrackedPlayer(void);
+qbool CL_DemoExtensionMatch(const char* path);
 
 void CL_AutoRecord_StopMatch(void);
 void CL_AutoRecord_CancelMatch(void);
@@ -1059,6 +1096,9 @@ void CL_MultiviewDemoFinish (void);
 void CL_MultiviewDemoStartRewind (void);
 void CL_MultiviewDemoStopRewind (void);
 
+// Restore stats for main view hud
+void CL_MultiviewInsetRestoreStats(void);
+
 // Weapons
 centity_t* CL_WeaponModelForView(void);
 
@@ -1121,8 +1161,8 @@ typedef struct scr_sshot_target_s {
 	byte* buffer;
 	qbool freeMemory;
 	qbool movie_capture;
-	int width;
-	int height;
+	size_t width;
+	size_t height;
 	image_format_t format;
 } scr_sshot_target_t;
 
@@ -1131,10 +1171,17 @@ int SCR_ScreenshotWrite(scr_sshot_target_t* target_params);
 qbool Movie_AnimatedPNG(void);
 
 qbool Movie_BackgroundCapture(scr_sshot_target_t* params);
-byte* Movie_TempBuffer(int width, int height);
+byte* Movie_TempBuffer(size_t width, size_t height);
 qbool Movie_BackgroundInitialise(void);
 void Movie_BackgroundShutdown(void);
 
 void Cache_Flush(void);
 
 #define DEFAULT_CHAT_SOUND "misc/talk.wav"
+
+#ifdef WITH_RENDERING_TRACE
+void Dev_VidFrameStart(void);
+void Dev_VidFrameTrace(void);
+void Dev_VidTextureDump(void);
+void Dev_TextureList(void);
+#endif

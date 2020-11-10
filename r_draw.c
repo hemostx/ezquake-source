@@ -56,6 +56,7 @@ cvar_t	scr_menudrawhud		= {"scr_menudrawhud", "0"};
 cvar_t  r_smoothtext        = { "r_smoothtext",      "1" };
 cvar_t  r_smoothcrosshair   = { "r_smoothcrosshair", "1" };
 cvar_t  r_smoothimages      = { "r_smoothimages",    "1" };
+cvar_t  r_smoothalphahack   = { "r_smoothalphahack", "0" };
 
 void OnChange_crosshairimage(cvar_t *, char *, qbool *);
 static cvar_t crosshairimage          = {"crosshairimage", "", 0, OnChange_crosshairimage};
@@ -564,6 +565,7 @@ void Draw_Init (void)
 		Cvar_Register(&scr_menualpha);
 		Cvar_Register(&scr_menudrawhud);
 		Cvar_Register(&r_smoothimages);
+		Cvar_Register(&r_smoothalphahack);
 
 		Cvar_SetCurrentGroup(CVAR_GROUP_CROSSHAIR);
 		Cvar_Register(&crosshairimage);
@@ -950,6 +952,15 @@ void Draw_FitPicAlpha(float x, float y, int fit_width, int fit_height, mpic_t *g
 	sw = (float) fit_width / (float) gl->width;
 	sh = (float) fit_height / (float) gl->height;
 	Draw_SAlphaPic(x, y, gl, alpha, min(sw, sh));
+}
+
+void Draw_FitPicAlphaCenter(float x, float y, int fit_width, int fit_height, mpic_t* gl, float alpha)
+{
+	float sw, sh, scale;
+	sw = (float)fit_width / (float)gl->width;
+	sh = (float)fit_height / (float)gl->height;
+	scale = min(sw, sh);
+	Draw_SAlphaPic(x + (fit_width - scale * gl->width) / 2.0f, y + (fit_height - scale * gl->height) / 2.0f, gl, alpha, scale);
 }
 
 void Draw_STransPic(float x, float y, mpic_t *pic, float scale)
