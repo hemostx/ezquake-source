@@ -617,7 +617,7 @@ void QMB_EntityParticleTrail(centity_t* cent, trail_type_t type)
 		case ROCKET_TRAIL:
 		default:
 			color[0] = 255; color[1] = 56; color[2] = 9; color[3] = 255;
-			AddEntityParticleTrail(p_trailpart, cent, 0, 6.2, 0.31, color);
+			AddEntityParticleTrail(p_trailpart, cent, 0, 4, 0.31, color);
 			AddEntityParticleTrail(p_smoke, cent, 1, 1.8, 0.825, NULL);
 			break;
 	}
