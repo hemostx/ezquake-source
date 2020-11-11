@@ -1365,7 +1365,6 @@ void SCR_HUD_DrawRadar(hud_t *hud)
 		y = min(y + height, y);
 
 		// Draw the radar background.
-		renderer.TextureWrapModeClamp(radar_pic.texnum);
 		Draw_SAlphaPic(x, y, &radar_pic, hud_radar_opacity->value, scale);
 
 		// Only draw once per frame.
