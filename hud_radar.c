@@ -141,6 +141,8 @@ void HUD_NewRadarMap(void)
 		radar_pic = *radar_pic_p;
 		radar_pic_found = true;
 
+		renderer.TextureWrapModeClamp(radar_pic.texnum);
+
 		// Calculate the height of the map.
 		map_height_diff = fabs((float)(cl.worldmodel->maxs[2] - cl.worldmodel->mins[2]));
 
