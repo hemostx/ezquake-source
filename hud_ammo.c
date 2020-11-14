@@ -209,7 +209,9 @@ void SCR_HUD_DrawAmmoCurrent(hud_t *hud)
 		align = HUD_FindVar(hud, "align");
 		proportional = HUD_FindVar(hud, "proportional");
 	}
-	SCR_HUD_DrawAmmo(hud, 0, scale->value, style->value, digits->value, align->string, proportional->integer);
+	if (cl.spectator == autocam) {
+		SCR_HUD_DrawAmmo(hud, 0, scale->value, style->value, digits->value, align->string, proportional->integer);
+	}
 }
 
 void SCR_HUD_DrawAmmo1(hud_t *hud)
@@ -223,7 +225,9 @@ void SCR_HUD_DrawAmmo1(hud_t *hud)
 		align = HUD_FindVar(hud, "align");
 		proportional = HUD_FindVar(hud, "proportional");
 	}
-	SCR_HUD_DrawAmmo(hud, 1, scale->value, style->value, digits->value, align->string, proportional->integer);
+	if (cl.spectator == autocam) {
+		SCR_HUD_DrawAmmo(hud, 1, scale->value, style->value, digits->value, align->string, proportional->integer);
+	}
 }
 
 void SCR_HUD_DrawAmmo2(hud_t *hud)
@@ -237,7 +241,9 @@ void SCR_HUD_DrawAmmo2(hud_t *hud)
 		align = HUD_FindVar(hud, "align");
 		proportional = HUD_FindVar(hud, "proportional");
 	}
-	SCR_HUD_DrawAmmo(hud, 2, scale->value, style->value, digits->value, align->string, proportional->integer);
+	if (cl.spectator == autocam) {
+		SCR_HUD_DrawAmmo(hud, 2, scale->value, style->value, digits->value, align->string, proportional->integer);
+	}
 }
 
 void SCR_HUD_DrawAmmo3(hud_t *hud)
@@ -251,7 +257,9 @@ void SCR_HUD_DrawAmmo3(hud_t *hud)
 		align = HUD_FindVar(hud, "align");
 		proportional = HUD_FindVar(hud, "proportional");
 	}
-	SCR_HUD_DrawAmmo(hud, 3, scale->value, style->value, digits->value, align->string, proportional->integer);
+	if (cl.spectator == autocam) {
+		SCR_HUD_DrawAmmo(hud, 3, scale->value, style->value, digits->value, align->string, proportional->integer);
+	}
 }
 
 void SCR_HUD_DrawAmmo4(hud_t *hud)
@@ -265,7 +273,9 @@ void SCR_HUD_DrawAmmo4(hud_t *hud)
 		align = HUD_FindVar(hud, "align");
 		proportional = HUD_FindVar(hud, "proportional");
 	}
-	SCR_HUD_DrawAmmo(hud, 4, scale->value, style->value, digits->value, align->string, proportional->integer);
+	if (cl.spectator == autocam) {
+		SCR_HUD_DrawAmmo(hud, 4, scale->value, style->value, digits->value, align->string, proportional->integer);
+	}
 }
 
 // icons - active ammo, armor, face etc..
@@ -278,19 +288,21 @@ void SCR_HUD_DrawAmmoIcon(hud_t *hud, int num, float scale, int style)
 
 	width = height = (style ? 8 : 24) * scale;
 
-	if (!HUD_PrepareDraw(hud, width, height, &x, &y))
-		return;
+	if (cl.spectator == autocam) {
+		if (!HUD_PrepareDraw(hud, width, height, &x, &y))
+			return;
 
-	if (style) {
-		switch (num) {
-			case 1: Draw_SAlt_String(x, y, "s", scale, false); break;
-			case 2: Draw_SAlt_String(x, y, "n", scale, false); break;
-			case 3: Draw_SAlt_String(x, y, "r", scale, false); break;
-			case 4: Draw_SAlt_String(x, y, "c", scale, false); break;
+		if (style) {
+			switch (num) {
+				case 1: Draw_SAlt_String(x, y, "s", scale, false); break;
+				case 2: Draw_SAlt_String(x, y, "n", scale, false); break;
+				case 3: Draw_SAlt_String(x, y, "r", scale, false); break;
+				case 4: Draw_SAlt_String(x, y, "c", scale, false); break;
+			}
 		}
-	}
-	else {
-		Draw_SPic(x, y, sb_ammo[num - 1], scale);
+		else {
+			Draw_SPic(x, y, sb_ammo[num - 1], scale);
+		}
 	}
 }
 
@@ -337,7 +349,9 @@ void SCR_HUD_DrawAmmoIcon1(hud_t *hud)
 		scale = HUD_FindVar(hud, "scale");
 		style = HUD_FindVar(hud, "style");
 	}
-	SCR_HUD_DrawAmmoIcon(hud, 1, scale->value, style->value);
+	if (cl.spectator == autocam) {
+		SCR_HUD_DrawAmmoIcon(hud, 1, scale->value, style->value);
+	}
 }
 
 void SCR_HUD_DrawAmmoIcon2(hud_t *hud)
@@ -348,7 +362,9 @@ void SCR_HUD_DrawAmmoIcon2(hud_t *hud)
 		scale = HUD_FindVar(hud, "scale");
 		style = HUD_FindVar(hud, "style");
 	}
-	SCR_HUD_DrawAmmoIcon(hud, 2, scale->value, style->value);
+	if (cl.spectator == autocam) {
+		SCR_HUD_DrawAmmoIcon(hud, 2, scale->value, style->value);
+	}
 }
 
 void SCR_HUD_DrawAmmoIcon3(hud_t *hud)
@@ -359,7 +375,9 @@ void SCR_HUD_DrawAmmoIcon3(hud_t *hud)
 		scale = HUD_FindVar(hud, "scale");
 		style = HUD_FindVar(hud, "style");
 	}
-	SCR_HUD_DrawAmmoIcon(hud, 3, scale->value, style->value);
+	if (cl.spectator == autocam) {
+		SCR_HUD_DrawAmmoIcon(hud, 3, scale->value, style->value);
+	}
 }
 
 void SCR_HUD_DrawAmmoIcon4(hud_t *hud)
@@ -370,7 +388,9 @@ void SCR_HUD_DrawAmmoIcon4(hud_t *hud)
 		scale = HUD_FindVar(hud, "scale");
 		style = HUD_FindVar(hud, "style");
 	}
-	SCR_HUD_DrawAmmoIcon(hud, 4, scale->value, style->value);
+	if (cl.spectator == autocam) {
+		SCR_HUD_DrawAmmoIcon(hud, 4, scale->value, style->value);
+	}
 }
 
 void Ammo_HudInit(void)
