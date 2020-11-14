@@ -6835,6 +6835,25 @@
       "group-id": "19",
       "type": "float"
     },
+    "hud_clock_content": {
+      "desc": "Controls what time to display",
+      "group-id": "19",
+      "type": "enum",
+      "values": [
+        {
+          "description": "Local system time",
+          "name": "0"
+        },
+        {
+          "description": "Client uptime",
+          "name": "1"
+        },
+        {
+          "description": "Time spent on server",
+          "name": "2"
+        }
+      ]
+    },
     "hud_clock_format": {
       "desc": "Controls in what format the clock is displayed",
       "group-id": "19",
@@ -12988,6 +13007,13 @@
     "in_ignore_touch_events": {
       "default": "1",
       "desc": "If set, will ignore events from touch inputs (events from a real mouse should be unaffected)",
+      "group-id": "11",
+      "type": "boolean"
+    },
+    "in_ignore_unfocused_keyb": {
+      "default": "0",
+      "desc": "If set, will ignore keyboard events received immediately after regaining focus.  Should stop shortcut keys from firing in-game",
+      "remarks": "X11 systems only.",
       "group-id": "11",
       "type": "boolean"
     },
