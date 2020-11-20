@@ -53,6 +53,8 @@
 - Fixed bug causing sky surfaces on submodels to not be drawn as skybox, if loaded (old bug)
 - Fixed bug causing corrupt rendering if HUD contained lines but no images (3.5 bug)
 - Fixed bug causing corrupt HUD rendering until GLSL HUD enabled or enabled but disabled and then r_smooth option disabled (3.5 bug)
+- Fixed bug causing program to terminate when recording demo and next packetsize exceeded limits (old bug)
+- Fixed bug causing crash with old-hud rendering and `r_damagestats` enabled (3.5 bug, #432, reported by eb)
 
 ### Ruleset-related changes
 
@@ -69,6 +71,7 @@
 - `/cl_keypad 2` - keypad will behave as `/cl_keypad 0` in-game, but `/cl_keypad 1` in console etc
 - `/cl_net_clientport` - allows the network client port to be specified in-game (rather than just `-clientport` command line switch)
 - `/cl_pext_serversideweapon` - protocol extension to move weapon selection to server (requires updated mvdsv)
+- `/cl_sv_packetsync` - when using internal server & delay packet, controls if server processes packets as they are received (fixes #292)
 - `/cl_weaponforgetondeath` - resets weapon to shotgun when respawning
 - `/cl_weaponforgetorder 2` - sets the best weapon then falls back to sg or axe (as per `/cl_weaponhide_axe`)
 - `/cl_window_caption 2` - window title will be 'ezQuake' and will not change with connection status
@@ -79,9 +82,12 @@
 ` `/gl_mipmap_viewmodels` removed, replaced with `/gl_texturemode_viewmodels`
 - `/hud_clock_content 1` changes output to show the uptime of the client
 - `/hud_clock_content 2` changes output to show time connected to the server (should match `/cl_clock 1` in oldhud)
+- `/hud_ammo_show_always 1` stops the hud element from being hidden when axe is selected
+- `/hud_iammo_show_always 1` stops the hud element from being hidden when axe is selected
 - `/in_ignore_touch_events` added - allows mouse clicks from touch input devices
 - `/in_ignore_unfocused_keyb` added - should ignore keyboard events immediately after receiving input focus (linux only)
 - `/menu_botmatch_gamedir` added - allows packages to customise the directory when starting a bot match
+- `/menu_botmatch_mod_old` added - controls if newer features should be disabled when starting a bot match (to support fbca, lgc etc)
 - `/net_tcp_timeout` added - allows timeout period to be set when connecting to QTV etc
 - `/qtv_adjustbuffer 2` added - targets a specific delay period, rather than % of buffer being full
 - `/r_drawflat_mode` allows textures to be shaded rather than solid color (GLSL only)
@@ -93,8 +99,10 @@
 - `/scr_scoreboard_login_flagfile` maps player flags to graphics to be shown next to player's name when they are logged in
 - `/scr_scoreboard_login_indicator` will be shown next to a player's name when they are logged in (if flag not available)
 - `/scr_scoreboard_login_color` controls the color of a player's name when they are logged in
+- `/set_ex2` command added, same functionality as `/set_ex` but doesn't resolve funchars - useful if script needs to compare value later (#428)
 - `/timedemo` commands show extra info at end to try and highlight stutter (measuring worst frametimes)
 - `/timedemo2` command renders demo in stop-motion at a particular fps
+- `/tp_poweruptextstyle` controls if `$colored_powerups` or `$colored_short_powerups` is used in internal reporting commands
 - `/tp_point` will show targets in priority order, if `/tp_pointpriorities` is enabled
 - `/vid_framebuffer_smooth` controls linear or nearest filtering (thanks to Calinou)
 - `/vid_framebuffer_sshotmode` controls if screenshot is of framebuffer or screen size

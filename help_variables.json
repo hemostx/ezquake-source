@@ -2592,6 +2592,13 @@
         }
       ]
     },
+    "cl_sv_packetsync": {
+      "default": "1",
+      "desc": "Determines if internal server should process packets as soon as received from client",
+      "remarks": "Should only affect playing on local server, when cl_delay_packet is enabled.\nRecommend to disable for older mods which fake players (frogbots) and leave enabled for KTX.",
+      "group-id": "43",
+      "type": "boolean"
+    },
     "cl_textencoding": {
       "default": "0",
       "desc": "Determines method used to encoding non-standard characters in outgoing messages.",
@@ -7678,6 +7685,55 @@
         {
           "description": "Gameclock is red.",
           "name": "1"
+        }
+      ]
+    },
+    "hud_gamesummary_format": {
+      "default": "RYM myr",
+      "desc": "Sets the content of the gamesummary hud element.",
+      "group-id": "19",
+      "type": "string",
+      "remarks": "MVD playback only.  if the letter is in upper-case, it refers to the first team, otherwise the second",
+      "values": [
+        {
+          "description": "number of megahealths taken",
+          "name": "m"
+        },
+        {
+          "description": "number of red armors taken",
+          "name": "r"
+        },
+        {
+          "description": "number of yellow armors taken",
+          "name": "y"
+        },
+        {
+          "description": "number of green armors taken",
+          "name": "g"
+        },
+        {
+          "description": "number of players with rocket launchers on current team",
+          "name": "o"
+        },
+        {
+          "description": "number of players with lightning gun on current team",
+          "name": "l"
+        },
+        {
+          "description": "number of players with rocket launcher or lightning gun on current team",
+          "name": "w"
+        },
+        {
+          "description": "number of quads taken",
+          "name": "q"
+        },
+        {
+          "description": "number of pents taken",
+          "name": "p"
+        },
+        {
+          "description": "number of rings taken",
+          "name": "e"
         }
       ]
     },
@@ -13750,6 +13806,18 @@
           "name": "true"
         }
       ]
+    },
+    "menu_botmatch_gamedir": {
+      "default": "fbca",
+      "desc": "The gamedir that ezQuake will switch to when starting a botmatch through the multiplayer menu",
+      "group-id": "17",
+      "type": "string"
+    },
+    "menu_botmatch_mod_old": {
+      "default": "1",
+      "desc": "If set, starting a botmatch through multiplayer menu will disable features that cause problems for older mods that spawn bots as non-clients",
+      "group-id": "17",
+      "type": "boolean"
     },
     "menu_ingame": {
       "default": "1",
@@ -20304,6 +20372,22 @@
       "desc": "Customizes the %u macro",
       "group-id": "14",
       "type": "float"
+    },
+    "tp_poweruptextstyle": {
+      "default": "0",
+      "desc": "Controls whether $tp_powerups (used in built-in binds) uses long or short-form powerup names",
+      "group-id": "14",
+      "type": "boolean",
+      "values": [
+        {
+          "description": "Long-form names (quad, pent, ring)",
+          "name": "false"
+        },
+        {
+          "description": "Short-form names (q, p, r)",
+          "name": "true"
+        }
+      ]
     },
     "tp_pointpriorities": {
       "default": "0",
