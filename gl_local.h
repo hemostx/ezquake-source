@@ -275,6 +275,7 @@ GLenum GL_ProcessErrors(const char* message);
 #define GL_LoadMandatoryFunction(functionName,testFlag)          { testFlag &= ((q##functionName##_impl = (functionName##_t)SDL_GL_GetProcAddress(#functionName)) != NULL); }
 #define GL_LoadMandatoryFunctionEXT(functionName,testFlag)       { testFlag &= ((q##functionName##_impl = (functionName##_t)SDL_GL_GetProcAddress(#functionName "EXT")) != NULL); }
 #define GL_LoadMandatoryFunctionExtension(functionName,testFlag) { testFlag &= ((q##functionName##_impl = (functionName##_t)SDL_GL_GetProcAddress(#functionName)) != NULL); }
+#define GL_InvalidateFunction(functionName)      { q##functionName##_impl = NULL; }
 #define GL_LoadOptionalFunction(functionName)    { q##functionName##_impl = (functionName##_t)SDL_GL_GetProcAddress(#functionName); }
 #define GL_LoadOptionalFunctionEXT(functionName) { q##functionName##_impl = (functionName##_t)SDL_GL_GetProcAddress(#functionName "EXT"); }
 #define GL_LoadOptionalFunctionARB(functionName) { q##functionName##_impl = (functionName##_t)SDL_GL_GetProcAddress(#functionName "ARB"); }
@@ -371,6 +372,7 @@ GLenum GL_ProcessErrors(const char* message);
 	} \
 }
 #define GL_Function(name, ...)    GL_Wrapper_ ## name(__VA_ARGS__)
+#define GL_BuiltinFunction(name, returnType, ...)
 #define GL_Available(name)        ((q ## name ## _impl) != NULL)
 #else
 // No direct tracing
@@ -392,6 +394,7 @@ GLenum GL_ProcessErrors(const char* message);
 #define GL_LoadOptionalFunctionARB(functionName) { q##functionName##_impl = NULL; }
 #define GL_UseDirectStateAccess() (false)
 #endif
+#define GL_InvalidateFunction(functionName)      { q##functionName##_impl = NULL; }
 #define GL_StaticProcedureDeclaration(name, formatString, ...) \
 	typedef void (APIENTRY *name ## _t)(__VA_ARGS__); \
 	static name ## _t    q ## name ## _impl;
