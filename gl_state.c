@@ -468,7 +468,7 @@ static qbool GL_BindTextureUnitImpl(GLuint unit, texture_ref reference, qbool al
 			}
 		}
 		else if (targetType == GL_TEXTURE_CUBE_MAP) {
-			if (bound_textures[unit_num] == texture) {
+			if (bound_cubemaps[unit_num] == texture) {
 				if (always_select_unit) {
 					GL_SelectTexture(unit);
 				}
@@ -656,7 +656,14 @@ void GL_TextureUnitMultiBind(int first, int count, texture_ref* textures)
 	int i;
 
 	if (first + count > MAX_LOGGED_TEXTURE_UNITS) {
-		GL_Procedure(glBindTextures, first, count, glTextures);
+		if (GL_Available(glBindTextures)) {
+			GL_Procedure(glBindTextures, first, count, glTextures);
+		}
+		else {
+			for (i = 0; i < count; ++i) {
+				renderer.TextureUnitBind(first + i, textures[i]);
+			}
+		}
 		memset(bound_arrays, 0, sizeof(bound_arrays));
 		memset(bound_textures, 0, sizeof(bound_textures));
 		memset(bound_cubemaps, 0, sizeof(bound_cubemaps));
@@ -846,7 +853,8 @@ void GL_LoadStateFunctions(void)
 	}
 
 	// 4.4 - binds textures to consecutive texture units
-	if (SDL_GL_ExtensionSupported("GL_ARB_multi_bind")) {
+	GL_InvalidateFunction(glBindTextures);
+	if (SDL_GL_ExtensionSupported("GL_ARB_multi_bind") && !COM_CheckParm(cmdline_param_client_nomultibind)) {
 		GL_LoadOptionalFunction(glBindTextures);
 	}
 }
