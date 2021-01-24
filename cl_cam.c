@@ -89,11 +89,21 @@ void vectoangles(vec3_t vec, vec3_t ang) {
 	ang[2] = 0;
 }
 
-void Cam_SetViewPlayer (void) {
-	if (cl.spectator && cl.autocam && cl.spec_locked && cl_chasecam.value)
-		cl.viewplayernum = cl.spec_track;
-	else
-		cl.viewplayernum = cl.playernum;
+void Cam_SetViewPlayer (void)
+{
+	int new_track;
+
+	if (cl.spectator && cl.autocam && cl.spec_locked && cl_chasecam.value) {
+		new_track = cl.spec_track;
+	}
+	else {
+		new_track = cl.playernum;
+	}
+
+	if (new_track != cl.viewplayernum) {
+		memset(cl.antilag_positions, 0, sizeof(cl.antilag_positions));
+	}
+	cl.viewplayernum = new_track;
 }
 
 // returns true if weapon model should be drawn in camera mode
@@ -403,11 +413,11 @@ void Cam_Track(usercmd_t *cmd)
 			Cam_Lock(cl.ideal_track);
 		}
 
-		if (frame->playerstate[cl.spec_track].messagenum != cl.parsecount || Cam_MainTrackNum() != cl.ideal_track) {
+		if ((frame->playerstate[cl.spec_track].messagenum != cl.parsecount && frame->playerstate[cl.spec_track].messagenum != cl.oldparsecount) || Cam_MainTrackNum() != cl.ideal_track) {
 			int i;
 
 			for (i = 0; i < MAX_CLIENTS - 1; i++) {
-				if (frame->playerstate[i].messagenum == cl.parsecount) {
+				if ((frame->playerstate[i].messagenum == cl.parsecount || frame->playerstate[i].messagenum == cl.oldparsecount)) {
 					break;
 				}
 			}

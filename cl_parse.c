@@ -48,6 +48,15 @@ $Id: cl_parse.c,v 1.135 2007-10-28 19:56:44 qqshka Exp $
 
 int CL_LoginImageId(const char* name);
 
+#ifdef MVD_PEXT1_HIDDEN_MESSAGES
+static void CL_ParseAntilagPosition(int size);
+static void CL_ParseDemoInfo(int size);
+static void CL_ParseDemoWeapon(int size, qbool server_side);
+static void CL_ParseDamageDone(int size);
+static void CL_ParseDemoWeaponInstruction(int size);
+static void CL_ParseUserCommand(int size);
+#endif // MVD_PEXT1_HIDDEN_MESSAGES
+
 void R_TranslatePlayerSkin (int playernum);
 
 char *svc_strings[] = {
@@ -130,9 +139,6 @@ char *svc_strings[] = {
 };
 
 const int num_svc_strings = sizeof(svc_strings)/sizeof(svc_strings[0]);
-
-int	parsecountmod;
-double	parsecounttime;
 
 //=========================================================
 // Cl_Messages, just some simple network statistics/profiling
@@ -1431,6 +1437,8 @@ void CL_ParseServerData (void)
 		if (protover == PROTOCOL_VERSION_MVD1) {
 			extern cvar_t cl_pext_serversideweapon;
 			extern cvar_t cl_pext_lagteleport;
+			extern cvar_t cl_debug_antilag_send;
+			extern cvar_t cl_debug_weapon_send;
 
 			cls.mvdprotocolextensions1 = MSG_ReadLong();
 			Com_DPrintf("Using MVDSV extensions 0x%x\n", cls.mvdprotocolextensions1);
@@ -1440,6 +1448,12 @@ void CL_ParseServerData (void)
 				}
 				if (cl_pext_lagteleport.integer && !(cls.mvdprotocolextensions1 & MVD_PEXT1_HIGHLAGTELEPORT)) {
 					Con_Printf("&cf00Warning&r: high-lag teleport fix not available\n");
+				}
+				if (cl_debug_antilag_send.integer && !(cls.mvdprotocolextensions1 & MVD_PEXT1_DEBUG_ANTILAG)) {
+					Con_Printf("&cf00Warning&r: server doesn't support antilag debugging - will not send\n");
+				}
+				if (cl_debug_weapon_send.integer && !(cls.mvdprotocolextensions1 & MVD_PEXT1_DEBUG_WEAPON)) {
+					Con_Printf("&cf00Warning&r: server doesn't support weapon debugging - will not send\n");
 				}
 			}
 			continue;
@@ -1953,8 +1967,8 @@ void CL_ParseClientdata (void)
 
 	cl.oldparsecount = (cls.mvdplayback) ? newparsecount - 1 : cl.parsecount;
 	cl.parsecount = newparsecount;
-	parsecountmod = (cl.parsecount & UPDATE_MASK);
-	frame = &cl.frames[parsecountmod];
+	cl.parsecountmod = (cl.parsecount & UPDATE_MASK);
+	frame = &cl.frames[cl.parsecountmod];
 
 	frame->receivedtime = cls.realtime;
 	if (cls.mvdplayback) {
@@ -1963,8 +1977,7 @@ void CL_ParseClientdata (void)
 	else if (cls.demoplayback) {
 		frame->receivedtime = cls.demopackettime;
 	}
-
-	parsecounttime = cl.frames[parsecountmod].senttime;
+	cl.parsecounttime = cl.frames[cl.parsecountmod].senttime;
 
 	frame->seq_when_received = cls.netchan.outgoing_sequence;
 
@@ -3087,6 +3100,12 @@ void CL_ParseStufftext (void)
 				MVDAnnouncer_BackpackPickup(s + 2);
 			}
 		}
+		else if (!strncmp(s, "//ktx di ", sizeof("//ktx di ") - 1)) {
+			if (cl.standby && !CL_Demo_SkipMessage(true)) {
+				// Ignore if not the tracked player
+				CL_ReadKtxDamageIndicatorString(s + 2);
+			}
+		}
 	}
 
 	// Any processing after this point will be ignored if not tracking the target player
@@ -3139,7 +3158,6 @@ void CL_ParseStufftext (void)
 	}
 	else if (!strncmp(s, "//sn ", sizeof("//sn ") - 1))
 	{
-		// TODO : Don't require GL for this.
 		extern void Parse_Shownick(char *s)	;
 		Parse_Shownick( s + 2 );
 	}
@@ -3198,9 +3216,9 @@ void CL_ParseStufftext (void)
 	}
 	else if (!strncmp(s, "//ucmd ", sizeof("//ucmd ") - 1))
 	{
-		extern void MVD_ParseUserCommand (const char* s);
+		extern void MVD_ParseUserCommand(const char* s);
 
-		MVD_ParseUserCommand (s + sizeof("//ucmd ") - 1);
+		MVD_ParseUserCommand(s + sizeof("//ucmd ") - 1);
 	}
 	else if (!strncmp(s, "//finalscores ", sizeof("//finalscores ") - 1))
 	{
@@ -3408,7 +3426,7 @@ void CL_MuzzleFlash (void)
 		return;
 
 	dl = CL_AllocDlight(-i);
-	state = &cl.frames[cls.mvdplayback ? (cl.oldparsecount & UPDATE_MASK) : parsecountmod].playerstate[i - 1];
+	state = &cl.frames[cls.mvdplayback ? (cl.oldparsecount & UPDATE_MASK) : cl.parsecountmod].playerstate[i - 1];
 
 	if ((i - 1) == cl.viewplayernum)
 	{
@@ -3649,14 +3667,19 @@ void CL_ParseServerMessage (void)
 						newangles[i] = MSG_ReadAngle();
 					}
 
-					if (CL_Demo_SkipMessage (true))
+					if (CL_Demo_SkipMessage(true)) {
 						break;
+					}
+
+					CL_DisableLerpMove();
 
 					if (cls.mvdplayback) 
 					{
 						mvd_fixangle |= 1 << j;
-						if (j == Cam_TrackNum())
+
+						if (j == Cam_TrackNum()) {
 							VectorCopy(newangles, cl.viewangles);
+						}
 					} 
 					else {
 						VectorCopy (newangles, cl.viewangles);
@@ -4055,3 +4078,346 @@ static void CL_InitialiseDemoMessageIfRequired(void)
 		SZ_Write(&cls.demomessage, net_message.data, 8);
 	}
 }
+
+#ifdef MVD_PEXT1_HIDDEN_MESSAGES
+// Hidden data packets (stuffed into mvd/qtv stream)
+void CL_ParseHiddenDataMessage(void)
+{
+	while (true) {
+		int size = LittleLong(MSG_ReadLong());
+		int protocol_version = 0, type;
+
+		if (size == -1) {
+			break;
+		}
+
+		type = LittleLong(MSG_ReadShort());
+		while (type == 0xFFFF && size > 0) {
+			type = LittleLong(MSG_ReadShort());
+			++protocol_version;
+		}
+
+		if (protocol_version != 0) {
+			MSG_ReadSkip(size);
+			continue;
+		}
+
+		switch (type) {
+		case mvdhidden_antilag_position:
+			CL_ParseAntilagPosition(size);
+			break;
+		case mvdhidden_demoinfo:
+			CL_ParseDemoInfo(size);
+			break;
+		case mvdhidden_usercmd_weapons:
+			CL_ParseDemoWeapon(size, false);
+			break;
+		case mvdhidden_usercmd_weapons_ss:
+			CL_ParseDemoWeapon(size, true);
+			break;
+		case mvdhidden_usercmd:
+			CL_ParseUserCommand(size);
+			break;
+		case mvdhidden_dmgdone:
+			CL_ParseDamageDone(size);
+			break;
+		case mvdhidden_usercmd_weapon_instruction:
+			CL_ParseDemoWeaponInstruction(size);
+			break;
+		default:
+			MSG_ReadSkip(size);
+			break;
+		}
+	}
+}
+
+#define DEMOINFO_BLOCK_SIZE (16 * 1024)
+static byte* demoinfo_buffer;
+static size_t demoinfo_buffer_size;
+
+static void CL_ParseDemoInfo(int size)
+{
+	int block_number = LittleShort(MSG_ReadShort());
+	size -= sizeof(short);
+
+	if (cl.demoinfo_bytes + size >= demoinfo_buffer_size) {
+		size_t new_size = ((cl.demoinfo_bytes + size + DEMOINFO_BLOCK_SIZE) / DEMOINFO_BLOCK_SIZE) * DEMOINFO_BLOCK_SIZE;
+		demoinfo_buffer = Q_realloc_named(demoinfo_buffer, new_size, "demoinfo_buffer");
+		demoinfo_buffer_size = new_size;
+	}
+
+	if (block_number == cl.demoinfo_blocknumber + 1 || block_number == 0) {
+		MSG_ReadData(demoinfo_buffer + cl.demoinfo_bytes, size);
+		cl.demoinfo_bytes += size;
+		cl.demoinfo_blocknumber = block_number;
+	}
+	else {
+		MSG_ReadSkip(size);
+		cl.demoinfo_bytes = 0;
+		cl.demoinfo_blocknumber = 0;
+	}
+
+	if (block_number == 0 && cl.demoinfo_bytes > 0) {
+		// finished, parse stats and do something useful here
+#if 0
+		FILE* file = fopen("qw/demoinfo.txt", "wb");
+		if (file) {
+			fwrite(demoinfo_buffer, 1, cl.demoinfo_bytes, file);
+			fclose(file);
+		}
+#endif
+		Q_free(demoinfo_buffer);
+		demoinfo_buffer_size = 0;
+		cl.demoinfo_bytes = 0;
+		cl.demoinfo_blocknumber = 0;
+	}
+}
+
+static void CL_ParseAntilagPosition(int size)
+{
+	mvdhidden_antilag_position_header_t header;
+	int old_readcount = msg_readcount;
+
+	header.playernum = MSG_ReadByte();
+	header.players = MSG_ReadByte();
+	header.incoming_seq = LittleLong(MSG_ReadLong());
+	header.server_time = LittleFloat(MSG_ReadFloat());
+	header.target_time = LittleFloat(MSG_ReadFloat());
+
+	size -= (msg_readcount - old_readcount);
+	if (size != header.players * sizeof_mvdhidden_antilag_position_t) {
+		Con_DPrintf("unexpected size: %d vs %d (%d players)\n", size, header.players * sizeof_mvdhidden_antilag_position_t, header.players);
+		MSG_ReadSkip(size);
+	}
+	else if (header.playernum != cl.viewplayernum) {
+		MSG_ReadSkip(size);
+	}
+	else {
+		mvdhidden_antilag_position_t position;
+		int i;
+
+		memset(&cl.antilag_positions, 0, sizeof(cl.antilag_positions));
+		for (i = 0; i < header.players; ++i) {
+			qbool clientpos_valid = false;
+
+			position.playernum = MSG_ReadByte();
+			clientpos_valid = position.playernum & MVD_PEXT1_ANTILAG_CLIENTPOS;
+			position.playernum &= ~MVD_PEXT1_ANTILAG_CLIENTPOS;
+
+			position.pos[0] = LittleFloat(MSG_ReadFloat());
+			position.pos[1] = LittleFloat(MSG_ReadFloat());
+			position.pos[2] = LittleFloat(MSG_ReadFloat());
+			position.msec = MSG_ReadByte();
+			position.predmodel = MSG_ReadByte();
+			position.clientpos[0] = LittleFloat(MSG_ReadFloat());
+			position.clientpos[1] = LittleFloat(MSG_ReadFloat());
+			position.clientpos[2] = LittleFloat(MSG_ReadFloat());
+
+			if (position.playernum >= 0 && position.playernum < MAX_CLIENTS) {
+				VectorCopy(position.pos, cl.antilag_positions[position.playernum].pos);
+				cl.antilag_positions[position.playernum].present = true;
+				VectorCopy(position.clientpos, cl.antilag_positions[position.playernum].clientpos);
+				cl.antilag_positions[position.playernum].clientpresent = clientpos_valid;
+			}
+		}
+	}
+}
+
+static void CL_ParseDemoWeaponInstruction(int size)
+{
+	extern cvar_t cl_debug_weapon_view;
+
+	byte playernum = MSG_ReadByte();
+	byte flags = MSG_ReadByte();
+	int sequence_set = LittleLong(MSG_ReadLong());
+	int mode = LittleLong(MSG_ReadLong());
+	byte weaponlist[10];
+
+	MSG_ReadData(weaponlist, sizeof(weaponlist));
+
+	if (cl_debug_weapon_view.integer && playernum == cl.viewplayernum) {
+		char description[128] = { 0 };
+		int i;
+
+		strlcat(description, "WS(I) ", sizeof(description));
+		if (flags & MVDHIDDEN_SSWEAPON_HIDE_AXE) {
+			strlcat(description, "hide(1) ", sizeof(description));
+		}
+		if (flags & MVDHIDDEN_SSWEAPON_HIDE_SG) {
+			strlcat(description, "hide(2) ", sizeof(description));
+		}
+		if (flags & MVDHIDDEN_SSWEAPON_HIDEONDEATH) {
+			strlcat(description, "hod ", sizeof(description));
+		}
+		if (flags & MVDHIDDEN_SSWEAPON_ENABLED) {
+			strlcat(description, "enabled ", sizeof(description));
+		}
+		else {
+			strlcat(description, "disabled ", sizeof(description));
+		}
+		if (flags & MVDHIDDEN_SSWEAPON_FORGETORDER) {
+			strlcat(description, "forget ", sizeof(description));
+		}
+		if (mode & clc_mvd_weapon_mode_presel) {
+			strlcat(description, "presel ", sizeof(description));
+		}
+		if (mode & clc_mvd_weapon_mode_iffiring) {
+			strlcat(description, "iffiring ", sizeof(description));
+		}
+
+		strlcat(description, "[", sizeof(description));
+		for (i = 0; i < sizeof(weaponlist) / sizeof(weaponlist[0]); ++i) {
+			if (!weaponlist[i]) {
+				break;
+			}
+
+			strlcat(description, va("%s%d", (i ? "," : ""), weaponlist[i]), sizeof(description));
+		}
+		strlcat(description, "]", sizeof(description));
+
+		Con_Printf("%s\n", description);
+	}
+}
+
+static void CL_ParseDemoWeapon(int size, qbool server_side)
+{
+	extern cvar_t cl_debug_weapon_view;
+	byte playernum = MSG_ReadByte();
+	int items = LittleLong(MSG_ReadLong());
+	byte shells = MSG_ReadByte();
+	byte nails = MSG_ReadByte();
+	byte rockets = MSG_ReadByte();
+	byte cells = MSG_ReadByte();
+	byte choice = MSG_ReadByte();
+	char* str = MSG_ReadString();
+	char indicator = (server_side ? 'S' : 'C');
+
+	if (cl_debug_weapon_view.integer && playernum == cl.viewplayernum) {
+		char script_options[128] = { 0 };
+		const char* has_weapon = "&c0f0";
+		const char* no_weapon = "&cf00";
+		const char* no_ammo = "&cff0";
+		const char* unknown_weapon = "[";
+
+		while (*str) {
+			const char* prefix = unknown_weapon;
+			const char* postfix = "";
+			switch (*str) {
+			case 1:
+				prefix = (items & IT_AXE) ? has_weapon : no_weapon;
+				break;
+			case 2:
+				prefix = (items & IT_SHOTGUN) ? (shells > 0 ? has_weapon : no_ammo) : no_weapon;
+				break;
+			case 3:
+				prefix = (items & IT_SUPER_SHOTGUN) ? (shells > 1 ? has_weapon : no_ammo) : no_weapon;
+				break;
+			case 4:
+				prefix = (items & IT_NAILGUN) ? (nails > 0 ? has_weapon : no_ammo) : no_weapon;
+				break;
+			case 5:
+				prefix = (items & IT_SUPER_NAILGUN) ? (nails > 1 ? has_weapon : no_ammo) : no_weapon;
+				break;
+			case 6:
+				prefix = (items & IT_GRENADE_LAUNCHER) ? (rockets > 0 ? has_weapon : no_ammo) : no_weapon;
+				break;
+			case 7:
+				prefix = (items & IT_ROCKET_LAUNCHER) ? (rockets > 0 ? has_weapon : no_ammo) : no_weapon;
+				break;
+			case 8:
+				prefix = (items & IT_LIGHTNING) ? (rockets > 0 ? has_weapon : no_ammo) : no_weapon;
+				break;
+			default:
+				prefix = "[";
+				postfix = "]";
+			}
+			strlcat(script_options, va("%s%d&r%s", prefix, str[0], postfix), sizeof(script_options));
+			str++;
+		}
+
+		Con_Printf("WS(%c) %s, A %d,%d,%d,%d => %d\n", indicator, script_options, shells, nails, rockets, cells, choice);
+	}
+}
+
+void CL_SpawnDamageIndicator(int deathtype, int targ_ent, int damage, qbool splash_damage, qbool team_damage);
+
+static void CL_ParseDamageDone(int size)
+{
+	short deathtype;
+	short attacker_ent;
+	short targ_ent;
+	short damage;
+	qbool splash_damage;
+	int player = Cam_TrackNum();
+
+	if (size != 8) {
+		// Unknown
+		MSG_ReadSkip(size);
+		return;
+	}
+
+	deathtype = MSG_ReadShort();
+	attacker_ent = MSG_ReadShort();
+	targ_ent = MSG_ReadShort();
+	damage = MSG_ReadShort();
+
+	splash_damage = (deathtype & MVDHIDDEN_DMGDONE_SPLASHDAMAGE);
+	deathtype &= ~MVDHIDDEN_DMGDONE_SPLASHDAMAGE;
+
+	// Don't trigger for self damage
+	if (player + 1 == attacker_ent && player + 1 != targ_ent) {
+		qbool team_damage = (targ_ent >= 1 && targ_ent <= MAX_CLIENTS && cl.players[targ_ent - 1].teammate);
+
+		CL_SpawnDamageIndicator(deathtype, targ_ent, damage, splash_damage, team_damage);
+	}
+}
+
+static void CL_ParseUserCommand(int size)
+{
+	byte playernum, dropnum, msec;
+	vec3_t angles;
+	short forward, side, up;
+	byte buttons, impulse;
+	frame_t* frame;
+
+	if (size != sizeof_mvdhidden_block_header_t_usercmd) {
+		MSG_ReadSkip(size);
+		return;
+	}
+
+	playernum = MSG_ReadByte();
+	dropnum = MSG_ReadByte();
+	msec = MSG_ReadByte();
+	angles[0] = MSG_ReadFloat();
+	angles[1] = MSG_ReadFloat();
+	angles[2] = MSG_ReadFloat();
+	forward = MSG_ReadShort();
+	side = MSG_ReadShort();
+	up = MSG_ReadShort();
+	buttons = MSG_ReadByte();
+	impulse = MSG_ReadByte();
+
+	if (playernum >= MAX_CLIENTS) {
+		return;
+	}
+
+	if (dropnum != 0) {
+		// replaying an old packet due to loss in this frame
+		return;
+	}
+
+	frame = &cl.frames[cl.validsequence & UPDATE_MASK];
+	if (frame->playerstate[playernum].messagenum == cl.parsecount || frame->playerstate[playernum].messagenum == cl.oldparsecount) {
+		usercmd_t* cmd = &frame->playerstate[playernum].command;
+
+		VectorCopy(angles, cmd->angles);
+		cmd->buttons = buttons;
+		cmd->forwardmove = forward;
+		cmd->sidemove = side;
+		cmd->upmove = up;
+		cmd->impulse = impulse;
+		cmd->msec = msec;
+	}
+}
+
+#endif // #ifdef MVD_PEXT1_HIDDEN_MESSAGES

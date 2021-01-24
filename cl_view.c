@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "hud.h"
 #include "hud_common.h"
 #include "mvd_utils.h"
+#include "r_matrix.h"
 
 #ifdef X11_GAMMA_WORKAROUND
 #include "tr_types.h"
@@ -780,8 +781,8 @@ void V_CalcViewRoll (void) {
 // if user wish so, weapon pre-selection is also taken in account
 // todo: if user selects different weapon while the current one is still
 // firing, wait until the animation is finished
-static int V_CurrentWeaponModel(void) { 
-	extern int IN_BestWeaponReal(void);
+static int V_CurrentWeaponModel(void)
+{
 	extern cvar_t cl_weaponpreselect;
 	int bestgun;
 	int realw = cl.stats[STAT_WEAPON];
@@ -813,7 +814,7 @@ static int V_CurrentWeaponModel(void) {
 	}
 	else {
 		if (ShowPreselectedWeap() && r_viewpreselgun.integer && !view_message.weaponframe) {
-			bestgun = IN_BestWeaponReal();
+			bestgun = IN_BestWeaponReal(true);
 			if (bestgun == 1) {
 				return cl_modelindices[mi_vaxe];
 			}
@@ -1063,6 +1064,9 @@ qbool V_PreRenderView(void)
 
 			r_refdef2.drawCaustics = (R_TextureReferenceIsValid(underwatertexture) && gl_caustics.integer);
 			r_refdef2.drawWorldOutlines = R_DrawWorldOutlines();
+			r_refdef2.distanceScale = tan(r_refdef.fov_x * (M_PI / 180) * 0.5f);
+			VectorScale(vpn, 0.002 * r_refdef2.distanceScale, r_refdef2.outline_vpn);
+			r_refdef2.outlineBase = 1 - DotProduct(r_origin, r_refdef2.outline_vpn);
 		}
 	}
 

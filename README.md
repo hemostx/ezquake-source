@@ -122,6 +122,11 @@ sudo apt-get install git build-essential libsdl2-2.0-0 libsdl2-dev libjansson-de
 ```
 sudo apt install git build-essential libsdl2-2.0-0 libsdl2-dev libjansson-dev libexpat1-dev libcurl4-openssl-dev libpng-dev libjpeg-dev libspeex-dev libspeexdsp-dev
 ```
+- For *openSUSE Tumbleweed*
+```
+sudo zypper install -t pattern devel_C_C++
+sudo zypper install git pcre-devel Mesa-libGL-devel libSDL2-devel libjansson-devel libexpat-devel libcurl-devel libpng16-devel libjpeg8-devel libjpeg-turbo libsndfile-devel speex-devel speexdsp-devel libXxf86vm-devel
+```
 
 Clone the git repository:
 ```
@@ -149,7 +154,7 @@ Get [Homebrew](http://brew.sh)
 Run exactly as it says on the front page:
 
 ```
-ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
 Make sure you run the `brew doctor` as instructed before doing anything else.
@@ -157,7 +162,7 @@ Make sure you run the `brew doctor` as instructed before doing anything else.
 Then run:
 
 ```
-brew install sdl2 sdl2_net sdl2_image sdl2_gfx sdl2_mixer pcre jansson pkg-config speex speexdsp
+brew install sdl2 sdl2_net sdl2_image sdl2_gfx sdl2_mixer pcre jansson pkg-config speex speexdsp libsndfile
 ```
 
 When it's done, just run `make` and it should compile without errors.

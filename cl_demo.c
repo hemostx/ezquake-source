@@ -165,7 +165,7 @@ static void CL_Demo_Close(void)
 //
 // Writes a chunk of data to the currently opened demo record file.
 //
-static void CL_Demo_Write(void *data, int size)
+static void CL_Demo_Write(const void *data, int size)
 {
 	if (democache_available)
 	{
@@ -1428,34 +1428,19 @@ void CL_StopMvd_f(void)
 
 	if (mvdrecordfile)
 	{
-		char *quotes[] = {
-	       " Make love not WarCraft\n"
-	       " Get quake at http://nquake.sf.net\n",
-	       " ez come ez go\n"
-	       " Get ezQuake at http://ezQuake.sf.net\n",
-	       " In the name of fun\n"
-	       " Visit http://quakeworld.nu\n"
-		};
-
-		char str[1024];
 		sizebuf_t	buf;
 		unsigned char buf_data[MAX_MSGLEN];
 
 		SZ_Init (&buf, buf_data, sizeof(buf_data));
 
 		// Print offensive message.
-		snprintf(str, sizeof(str),
-				"\x1d\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1f\n"
-		        "%s"
-				"\x1d\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1f\n",
-				quotes[i_rnd( 0, sizeof(quotes)/sizeof(quotes[0]) - 1 )]);
-
+#ifdef EZ_MVD_SIGNOFF
 		MSG_WriteByte(&buf, svc_print);
 		MSG_WriteByte(&buf, 2);
-		MSG_WriteString(&buf, str);
+		MSG_WriteString(&buf, EZ_MVD_SIGNOFF);
+#endif
 
 		// Add disconnect.
-
 		MSG_WriteByte (&buf, svc_disconnect);
 		MSG_WriteString (&buf, "EndOfDemo");
 
@@ -1749,6 +1734,7 @@ static void CL_DemoReadDemCmd(void)
 
 	// Get which frame we should read the cmd into from the demo.
 	int i = cls.netchan.outgoing_sequence & UPDATE_MASK;
+	int s = cls.netchan.outgoing_sequence & NETWORK_STATS_MASK;
 	int j;
 
 	// Read the user cmd from the demo.
@@ -1767,6 +1753,8 @@ static void CL_DemoReadDemCmd(void)
 	// how many net messages have been sent.
 	cl.frames[i].senttime = cls.demopackettime;
 	cl.frames[i].receivedtime = -1;		// We haven't gotten a reply yet.
+	network_stats[s].senttime = cls.realtime;
+	network_stats[s].sentsize = sizeof(*pcmd) + 12; // complete lie, compared to the original
 	cls.netchan.outgoing_sequence++;
 
 	// Read the viewangles from the demo and convert them to correct byte order.
@@ -1809,6 +1797,12 @@ static qbool CL_DemoReadDemRead(void)
 
 	// Skip over any dem_multiple packets sent to no-one
 	if (cls.mvdplayback && cls.lasttype == dem_multiple && cls.lastto == 0) {
+#ifdef MVD_PEXT1_HIDDEN_MESSAGES
+		// Don't skip these if they're in parseable format
+		if (cls.mvdprotocolextensions1 & MVD_PEXT1_HIDDEN_MESSAGES) {
+			return false;
+		}
+#endif
 		return true;
 	}
 
@@ -2209,32 +2203,17 @@ static void OnChange_demo_format(cvar_t *var, char *string, qbool *cancel)
 //
 static void CL_WriteDemoPimpMessage(void)
 {
-	int i;
-	char pimpmessage[256], border[64];
-
-	if (cls.demoplayback)
+	if (cls.demoplayback) {
 		return;
+	}
 
-	strlcpy (border, "\x1d", sizeof (border));
-
-	for (i = 0; i < 34; i++)
-		strlcat (border, "\x1e", sizeof (border));
-
-	strlcat (border, "\x1f", sizeof (border));
-
-	snprintf (pimpmessage, sizeof(pimpmessage), "\n%s\n%s\n%s\n",
-		border,
-		"\x1d\x1e\x1e\x1e\x1e\x1e\x1e Recorded by ezQuake \x1e\x1e\x1e\x1e\x1e\x1e\x1e\x1f",
-		border
-	);
-
-	SZ_Clear (&net_message);
-	MSG_WriteLong (&net_message, cls.netchan.incoming_sequence + 1);
-	MSG_WriteLong (&net_message, cls.netchan.incoming_acknowledged | (cls.netchan.incoming_reliable_acknowledged << 31));
-	MSG_WriteByte (&net_message, svc_print);
-	MSG_WriteByte (&net_message, PRINT_HIGH);
-	MSG_WriteString (&net_message, pimpmessage);
-	CL_WriteDemoMessage (&net_message);
+	SZ_Clear(&net_message);
+	MSG_WriteLong(&net_message, cls.netchan.incoming_sequence + 1);
+	MSG_WriteLong(&net_message, cls.netchan.incoming_acknowledged | (cls.netchan.incoming_reliable_acknowledged << 31));
+	MSG_WriteByte(&net_message, svc_print);
+	MSG_WriteByte(&net_message, PRINT_HIGH);
+	MSG_WriteString(&net_message, EZ_QWD_SIGNOFF);
+	CL_WriteDemoMessage(&net_message);
 }
 
 //
@@ -2273,6 +2252,11 @@ void CL_Stop_f (void)
 		return;
 	}
 #endif
+
+	if (cls.mvdplayback && cls.mvdrecording) {
+		CL_StopMvd_f();
+		return;
+	}
 
 	if (!cls.demorecording)
 	{
@@ -2322,6 +2306,11 @@ void CL_Record_f (void)
 	}
 #endif
 
+	if (cls.mvdplayback) {
+		CL_RecordMvd_f();
+		return;
+	}
+
 #if defined(PROTOCOL_VERSION_FTE) || defined(PROTOCOL_VERSION_FTE2)
 	if (cls.fteprotocolextensions &~ (FTE_PEXT_CHUNKEDDOWNLOADS|FTE_PEXT_256PACKETENTITIES))
 	{
@@ -2354,12 +2343,6 @@ void CL_Record_f (void)
 		// Start recording to the specified demo name.
 		//
 		{
-			if (cls.mvdplayback)
-			{
-				Com_Printf ("Cannot record during mvd playback\n");
-				return;
-			}
-
 			if (cls.state != ca_active && cls.state != ca_disconnected)
 			{
 				Com_Printf ("Cannot record whilst connecting\n");
@@ -3706,8 +3689,7 @@ static void CL_DemoPlaybackInit(void)
 	CL_ClearPredict();
 
 	// Recording not allowed during mvdplayback.
-	if (cls.mvdplayback && cls.demorecording)
-	{
+	if (cls.mvdplayback && cls.demorecording) {
 		CL_Stop_f();
 	}
 	MVD_Initialise();
@@ -4418,8 +4400,7 @@ void CL_QTVPlay (vfsfile_t *newf, void *buf, int buflen)
 	CL_ClearPredict();
 
 	// Recording not allowed during mvdplayback.
-	if (cls.mvdplayback && cls.demorecording)
-	{
+	if (cls.mvdplayback && cls.demorecording) {
 		CL_Stop_f();
 	}
 

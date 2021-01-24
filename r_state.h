@@ -120,6 +120,9 @@ typedef struct rendering_state_s {
 	int currentViewportX, currentViewportY;
 	int currentViewportWidth, currentViewportHeight;
 
+	int fullScreenViewportX, fullScreenViewportY;
+	int fullScreenViewportWidth, fullScreenViewportHeight;
+
 	qbool framebuffer_srgb;
 
 	struct {
@@ -255,19 +258,24 @@ typedef enum {
 	r_state_aliasmodel_powerupshell,
 	r_state_weaponmodel_powerupshell,
 
+	// meag: no multitexture_additive: multitex currently only for .mdl files, additive only for .md3
 	r_state_aliasmodel_notexture_opaque,
 	r_state_aliasmodel_notexture_transparent,
+	r_state_aliasmodel_notexture_additive,
 	r_state_aliasmodel_singletexture_opaque,
 	r_state_aliasmodel_singletexture_transparent,
+	r_state_aliasmodel_singletexture_additive,
 	r_state_aliasmodel_multitexture_opaque,
 	r_state_aliasmodel_multitexture_transparent,
 	r_state_weaponmodel_singletexture_opaque,
 	r_state_weaponmodel_singletexture_transparent,
+	r_state_weaponmodel_singletexture_additive,
 	r_state_weaponmodel_multitexture_opaque,
 	r_state_weaponmodel_multitexture_transparent,
 
 	r_state_aliasmodel_shadows,
 	r_state_aliasmodel_outline,
+	r_state_weaponmodel_outline,
 
 	r_state_aliasmodel_opaque_batch,
 	r_state_aliasmodel_translucent_batch,
@@ -318,5 +326,7 @@ void R_CustomPolygonOffset(r_polygonoffset_t mode);
 void R_Hud_Initialise(void);
 
 void R_Viewport(int x, int y, int width, int height);
+void R_SetFullScreenViewport(int x, int y, int width, int height);
+void R_GetFullScreenViewport(int* viewport);
 
 #endif // EZQUAKE_R_STATE_HEADER

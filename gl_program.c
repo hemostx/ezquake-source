@@ -269,6 +269,10 @@ static r_program_uniform_t program_uniforms[] = {
 	{ r_program_hud_images_glc, "primarySampler", 1, false },
 	// r_program_uniform_hud_images_glc_secondarySampler
 	{ r_program_hud_images_glc, "secondarySampler", 1, false },
+	// r_program_uniform_aliasmodel_outline_glc_lerpFraction
+	{ r_program_aliasmodel_outline_glc, "lerpFraction", 1, false },
+	// r_program_uniform_aliasmodel_outline_glc_outlineScale
+	{ r_program_aliasmodel_outline_glc, "outlineScale", 1, false },
 	// r_program_uniform_brushmodel_alphatested_outlines,
 	{ r_program_brushmodel_alphatested, "draw_outlines", 1, false },
 	// r_program_uniform_brushmodel_alphatested_sampler,
@@ -304,6 +308,8 @@ static r_program_attribute_t program_attributes[] = {
 	{ r_program_aliasmodel_shell_glc, "flags" },
 	// r_program_attribute_aliasmodel_shadow_glc_flags
 	{ r_program_aliasmodel_shadow_glc, "flags" },
+	// r_program_attribute_aliasmodel_outline_glc_flags
+	{ r_program_aliasmodel_outline_glc, "flags" },
 	// r_program_attribute_world_drawflat_style
 	{ r_program_world_drawflat_glc, "style" },
 	// r_program_attribute_world_textured_style
@@ -1147,6 +1153,7 @@ static void GL_BuildCoreDefinitions(void)
 	GL_DefineProgram_VF(r_program_aliasmodel_std_glc, "aliasmodel-std", true, glc_aliasmodel_std, renderer_classic, GLC_AliasModelStandardCompile);
 	GL_DefineProgram_VF(r_program_aliasmodel_shell_glc, "aliasmodel-shell", true, glc_aliasmodel_shell, renderer_classic, GLC_AliasModelShellCompile);
 	GL_DefineProgram_VF(r_program_aliasmodel_shadow_glc, "aliasmodel-shadow", true, glc_aliasmodel_shadow, renderer_classic, GLC_AliasModelShadowCompile);
+	GL_DefineProgram_VF(r_program_aliasmodel_outline_glc, "aliasmodel-outline", true, glc_aliasmodel_std, renderer_classic, GLC_AliasModelOutlineCompile);
 	GL_DefineProgram_VF(r_program_world_drawflat_glc, "drawflat-world", true, glc_world_drawflat, renderer_classic, GLC_DrawflatProgramCompile);
 	GL_DefineProgram_VF(r_program_world_textured_glc, "textured-world", true, glc_world_textured, renderer_classic, GLC_PreCompileWorldPrograms);
 	GL_DefineProgram_VF(r_program_world_secondpass_glc, "secondpass-world", true, glc_world_secondpass, renderer_classic, GLC_PreCompileWorldPrograms);
