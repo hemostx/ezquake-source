@@ -72,6 +72,14 @@ double olddemotime, nextdemotime; // TODO: Put in a demo struct.
 
 double bufferingtime; // if we stream from QTV, this is non zero when we trying fill our buffer
 
+// playback buffer
+vfsfile_t* playbackfile = NULL;           // The demo file used for playback.
+float demo_time_length = 0;               // The length of the demo.
+
+unsigned char stream_buffer[1024 * 256];  // Playback buffer (qtv only).
+int     stream_buffer_cnt = 0;            // How many bytes we've have in playback buffer.
+qbool   stream_buffer_eof = false;        // Have we reached the end of the playback buffer?
+
 //
 // Vars related to QIZMO compressed demos.
 // (Only available in Win32 since we need to use an external app)
@@ -110,6 +118,7 @@ cvar_t demo_dir = {"demo_dir", "", 0, OnChange_demo_dir};
 cvar_t demo_benchmarkdumps = {"demo_benchmarkdumps", "1"};
 cvar_t cl_startupdemo = {"cl_startupdemo", ""};
 cvar_t demo_jump_rewind = { "demo_jump_rewind", "-10" };
+cvar_t cl_demo_qwd_delta = { "cl_demo_qwd_delta", "1" };
 
 // Used to save track status when rewinding.
 static vec3_t rewind_angle;
@@ -840,6 +849,10 @@ static void CL_WriteStartupData (void)
 	CL_WriteStartupDemoMessage (&buf, seq++);
 
 	CL_WriteSetDemoMessage();
+
+	for (i = 0; i < sizeof(cl.frames) / sizeof(cl.frames[0]); ++i) {
+		cl.frames[i].in_qwd = false;
+	}
 }
 
 //=========================================================
@@ -1538,13 +1551,6 @@ void CL_RecordMvd_f(void)
 //								DEMO READING
 //=============================================================================
 
-vfsfile_t *playbackfile = NULL;         // The demo file used for playback.
-float demo_time_length = 0;             // The length of the demo.
-
-unsigned char pb_buf[1024*256];         // Playback buffer.
-int     pb_cnt = 0;                     // How many bytes we've have in playback buffer.
-qbool   pb_eof = false;                 // Have we reached the end of the playback buffer?
-
 //
 // Inits the demo playback buffer.
 // If we do QTV demo playback, we read data ahead while parsing QTV connection headers,
@@ -1553,46 +1559,74 @@ qbool   pb_eof = false;                 // Have we reached the end of the playba
 void CL_Demo_PB_Init(void *buf, int buflen)
 {
 	// The length of the buffer is out of bounds.
-	if (buflen < 0 || (size_t) buflen > sizeof(pb_buf)) {
-		Sys_Error("CL_Demo_PB_Init: buflen out of bounds.");
+	if (FSMMAP_IsMemoryMapped(playbackfile)) {
+		stream_buffer_cnt = 0;
+		stream_buffer_eof = false;
+	}
+	else {
+		if (buflen < 0 || (size_t)buflen > sizeof(stream_buffer)) {
+			Sys_Error("CL_Demo_PB_Init: buflen out of bounds.");
+		}
+
+		// Copy the specified init data into the playback buffer.
+		memcpy(stream_buffer, buf, buflen);
+
+		// Reset any associated playback buffers.
+		stream_buffer_cnt = buflen;
+		stream_buffer_eof = false;
+	}
+}
+
+static int CL_StreamRead(void* buf, int size, qbool peek)
+{
+	int need = max(0, min(stream_buffer_cnt, size));
+	memcpy(buf, stream_buffer, need);
+
+	if (!peek) {
+		// We are not peeking, so move along buffer.
+		stream_buffer_cnt -= need;
+		memmove(stream_buffer, stream_buffer + need, stream_buffer_cnt);
+
+		// We get some data from playback file or qtv stream, dump it to file right now.
+		if (need > 0 && cls.mvdplayback && cls.mvdrecording) {
+			CL_MVD_DemoWrite(buf, need);
+		}
 	}
 
-	// Copy the specified init data into the playback buffer.
-	memcpy(pb_buf, buf, buflen);
-
-	// Reset any associated playback buffers.
-	pb_cnt = buflen;
-	pb_eof = false;
+	return need;
 }
 
 //
-// This is memory reading(not from file or socket), we just copy data from pb_buf[] to caller buffer,
-// sure if we're not peeking we decrease pb_buf[] size (pb_cnt) and move along pb_buf[] itself.
+// This is memory reading(not from file or socket), we just copy data from stream buffer to caller buffer,
+// if we're not peeking we decrease move data along buffer so next packet is always at position 0
+// If using a memory mapped file this is avoided and we just use standard READ/SEEK etc
 //
 int CL_Demo_Read(void *buf, int size, qbool peek)
 {
 	int need;
 
 	// Size can't be negative.
-	if (size < 0)
+	if (size < 0) {
 		Host_Error("pb_read: size < 0");
-
-	need = max(0, min(pb_cnt, size));
-	memcpy(buf, pb_buf, need);
-
-	if (!peek)
-	{
-		// We are not peeking, so move along buffer.
-		pb_cnt -= need;
-		memmove(pb_buf, pb_buf + need, pb_cnt);
-
-		// We get some data from playback file or qtv stream, dump it to file right now.
-		if (need > 0 && cls.mvdplayback && cls.mvdrecording)
-			CL_MVD_DemoWrite(buf, need);
 	}
 
-	if (need != size)
+	if (FSMMAP_IsMemoryMapped(playbackfile)) {
+		vfserrno_t err;
+		unsigned long pos = VFS_TELL(playbackfile);
+
+		need = VFS_READ(playbackfile, buf, size, &err);
+
+		if (peek) {
+			VFS_SEEK(playbackfile, pos, SEEK_SET);
+		}
+	}
+	else {
+		need = CL_StreamRead(buf, size, peek);
+	}
+
+	if (need != size) {
 		Host_Error("Unexpected end of demo");
+	}
 
 	return need;
 }
@@ -1602,14 +1636,18 @@ int CL_Demo_Read(void *buf, int size, qbool peek)
 //
 static int pb_raw_read(void *buf, int size)
 {
-	vfserrno_t err;
-	int r = VFS_READ(playbackfile, buf, size, &err);
+	if (playbackfile && FSMMAP_IsMemoryMapped(playbackfile)) {
+		return VFS_GETLEN(playbackfile) - (int)VFS_TELL(playbackfile); // FIXME: _TELL is unsigned long but _GETLEN is int?
+	}
+	else {
+		vfserrno_t err;
+		int r = VFS_READ(playbackfile, buf, size, &err);
 
-	// Size > 0 mean detect EOF only if we actually trying read some data.
-	if (size > 0 && !r && err == VFSERR_EOF)
-		pb_eof = true;
+		// Size > 0 mean detect EOF only if we actually trying read some data.
+		stream_buffer_eof |= (size > 0 && !r && err == VFSERR_EOF);
 
-	return r;
+		return r;
+	}
 }
 
 //
@@ -1621,24 +1659,32 @@ static int pb_raw_read(void *buf, int size)
 //
 qbool pb_ensure(void)
 {
-	// Increase internal TCP buffer by faking a read to it.
-	pb_raw_read(NULL, 0);
-
-	// Show how much we've read.
-	if (cl_shownet.value == 3)
-		Com_Printf(" %d", pb_cnt);
-
 	// Try to fill the entire buffer with demo data.
-	pb_cnt += pb_raw_read(pb_buf + pb_cnt, max(0, (int)sizeof(pb_buf) - pb_cnt));
+	if (FSMMAP_IsMemoryMapped(playbackfile)) {
+		return VFS_TELL(playbackfile) < VFS_GETLEN(playbackfile);
+	}
+	else {
+		// Increase internal TCP buffer by faking a read to it.
+		pb_raw_read(NULL, 0);
 
-	if (pb_cnt == (int)sizeof(pb_buf) || pb_eof)
-		return true; // Return true if we have full buffer or get EOF.
+		// Show how much we've read.
+		if (cl_shownet.value == 3) {
+			Com_Printf(" %d", stream_buffer_cnt);
+		}
 
-	// Probably not enough data in buffer, check do we have at least one message in buffer.
-	if (cls.mvdplayback && pb_cnt)
-	{
-		if(ConsistantMVDData((unsigned char*)pb_buf, pb_cnt))
-			return true;
+		stream_buffer_cnt += pb_raw_read(stream_buffer + stream_buffer_cnt, max(0, (int)sizeof(stream_buffer) - stream_buffer_cnt));
+
+		if (stream_buffer_cnt == (int)sizeof(stream_buffer) || stream_buffer_eof) {
+			return true; // Return true if we have full buffer or get EOF.
+		}
+
+		// Probably not enough data in buffer, check do we have at least one message in buffer.
+		if (cls.mvdplayback && stream_buffer_cnt) {
+			// Only care if there's a single packet...
+			if (ConsistantMVDData((unsigned char*)stream_buffer, stream_buffer_cnt, 1)) {
+				return true;
+			}
+		}
 	}
 
 	// Set the buffering time if it hasn't been set already.
@@ -1648,8 +1694,9 @@ qbool pb_ensure(void)
 
 		bufferingtime = Sys_DoubleTime() + prebufferseconds;
 
-		if (developer.integer >= 2)
+		if (developer.integer >= 2) {
 			Com_DPrintf("&cF00" "qtv: not enough buffered, buffering for %.1fs\n" "&r", prebufferseconds); // print some annoying message
+		}
 	}
 
 	return false;
@@ -1753,6 +1800,7 @@ static void CL_DemoReadDemCmd(void)
 	// how many net messages have been sent.
 	cl.frames[i].senttime = cls.demopackettime;
 	cl.frames[i].receivedtime = -1;		// We haven't gotten a reply yet.
+	cl.frames[i].delta_sequence = cl.delta_sequence;
 	network_stats[s].senttime = cls.realtime;
 	network_stats[s].sentsize = sizeof(*pcmd) + 12; // complete lie, compared to the original
 	cls.netchan.outgoing_sequence++;
@@ -2356,8 +2404,9 @@ void CL_Record_f (void)
 			}
 
 			// Stop any recording in progress.
-			if (cls.demorecording)
+			if (cls.demorecording) {
 				CL_Stop_f();
+			}
 
 			// Make sure the filename doesn't contain any invalid characters.
 			if (!Util_Is_Valid_Filename(Cmd_Argv(1)))
@@ -2382,8 +2431,9 @@ void CL_Record_f (void)
 			cls.demorecording = true;
 
 			// If we're active, write startup data right away.
-			if (cls.state == ca_active)
+			if (cls.state == ca_active) {
 				CL_WriteStartupData();
+			}
 
 			// Save the demoname for later use.
 			strlcpy(demoname, nameext, sizeof(demoname));
@@ -3283,19 +3333,22 @@ void CL_Demo_DumpBenchmarkResult(int frames, float timet)
 //
 // Stops demo playback.
 //
-void CL_StopPlayback (void)
+void CL_StopPlayback(void)
 {
 	// Nothing to stop.
-	if (!cls.demoplayback)
+	if (!cls.demoplayback) {
 		return;
+	}
 
 	// Capturing to avi/images, stop that.
-	if (Movie_IsCapturing())
+	if (Movie_IsCapturing()) {
 		Movie_Stop(false);
+	}
 
 	// Close the playback file.
-	if (playbackfile)
+	if (playbackfile) {
 		VFS_CLOSE(playbackfile);
+	}
 
 	// Reset demo playback vars.
 	playbackfile = NULL;
@@ -4622,6 +4675,7 @@ void CL_QTVPlay_f (void)
 	}
 
 	// Open a TCP socket to the specified host.
+	CL_StopPlayback();
 	newf = FS_OpenTCP(host);
 
 	// Failed to open the connection.
@@ -5201,13 +5255,10 @@ void Demo_AdjustSpeed(void)
 		}
 
 		if (qtv_adjustbuffer.integer) {
-			extern	unsigned char pb_buf[];
-			extern	int		pb_cnt;
-
 			int				ms;
 			double			demospeed, desired, current;
 
-			ConsistantMVDDataEx(pb_buf, pb_cnt, &ms);
+			Demo_BufferSize(&ms);
 
 			desired = max(0.5, QTVBUFFERTIME); // well, we need some reserve for adjusting
 			current = 0.001 * ms;
@@ -5406,6 +5457,7 @@ void CL_Demo_Init(void)
 	Cvar_Register(&demo_benchmarkdumps);
 	Cvar_Register(&cl_startupdemo);
 	Cvar_Register(&demo_jump_rewind);
+	Cvar_Register(&cl_demo_qwd_delta);
 
 	Cvar_ResetCurrentGroup();
 }
@@ -5432,4 +5484,14 @@ qbool CL_Demo_SkipMessage (qbool skip_if_seeking)
 		return false;
 
 	return CL_Demo_NotForTrackedPlayer();
+}
+
+qbool SCR_QTVBufferToBeDrawn(int options)
+{
+	return (options == 1 && cls.mvdplayback == QTV_PLAYBACK) || (options > 1 && cls.mvdplayback && !FSMMAP_IsMemoryMapped(playbackfile));
+}
+
+int Demo_BufferSize(int* ms)
+{
+	return ConsistantMVDDataEx(stream_buffer, stream_buffer_cnt, ms, 0);
 }

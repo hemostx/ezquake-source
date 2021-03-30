@@ -48,6 +48,8 @@ $Id: cl_parse.c,v 1.135 2007-10-28 19:56:44 qqshka Exp $
 
 int CL_LoginImageId(const char* name);
 
+void IN_ServerSideWeaponSelectionResponse(const char* s);
+
 #ifdef MVD_PEXT1_HIDDEN_MESSAGES
 static void CL_ParseAntilagPosition(int size);
 static void CL_ParseDemoInfo(int size);
@@ -2074,6 +2076,8 @@ void CL_ProcessUserInfo(int slot, player_info_t *player, char *key)
 		strlcpy(player->name, " ", sizeof(player->name));
 	}
 
+	CL_RemovePrefixFromName(slot);
+
 	player->real_topcolor = atoi(Info_ValueForKey(player->userinfo, "topcolor"));
 	player->real_bottomcolor = atoi(Info_ValueForKey(player->userinfo, "bottomcolor"));
 
@@ -3250,7 +3254,11 @@ void CL_ParseStufftext (void)
 			}
 		}
 	}
-
+	else if (!strncmp(s, "//mvdsv_ssw ", sizeof("//mvdsv_ssw ") - 1)) {
+		if (!cls.demoplayback && !cl.spectator) {
+			IN_ServerSideWeaponSelectionResponse(s + sizeof("//mvdsv_ssw ") - 1);
+		}
+	}
 	else
 	{
 		Cbuf_AddTextEx(&cbuf_svc, s);
@@ -3581,15 +3589,15 @@ void CL_ParseServerMessage (void)
 						break;
 					}
 
-					if (cls.mvdplayback == true) // MVD playback, but not QTV stream.
-					{
-						extern	int		pb_cnt;
-
+					if (cls.mvdplayback == MVD_FILE_PLAYBACK) {
+						// MVD playback, but not QTV stream.
 						// We still have some data, so lets try ignore disconnect since it probably multy map MVD.
-						if (pb_cnt > 0)
-						{
-							if (net_message.cursize > msg_readcount && strcmp(s = MSG_ReadString(), "EndOfDemo"))
+						int ms;
+
+						if (Demo_BufferSize(&ms)) {
+							if (net_message.cursize > msg_readcount && strcmp(s = MSG_ReadString(), "EndOfDemo")) {
 								Com_Printf("WARNING: Non-standard disconnect message in MVD '%s'\n", s);
+							}
 
 							Com_DPrintf("Ignoring Server disconnect\n");
 							break;
@@ -4006,10 +4014,13 @@ void CL_ParseServerMessage (void)
 					else
 						cl.paused &= ~PAUSED_SERVER;
 
-					if (ISPAUSED)
+					if (ISPAUSED) {
 						CDAudio_Pause();
-					else
+						CL_StorePausePredictionLocations();
+					}
+					else {
 						CDAudio_Resume();
+					}
 					break;
 				}
 			case svc_qizmovoice:
@@ -4031,7 +4042,20 @@ void CL_ParseServerMessage (void)
 			// Write the change in entities to the demo being recorded
 			// or the net message we just received.
 			if (cmd == svc_deltapacketentities) {
-				CL_WriteDemoEntities();
+				extern cvar_t cl_demo_qwd_delta;
+				int newpacket = cls.netchan.incoming_sequence & UPDATE_MASK;
+				int deltaseq = cl.frames[newpacket].delta_sequence;
+				qbool delta_valid = deltaseq > 0 && !cl.frames[deltaseq & UPDATE_MASK].invalid && cl.frames[deltaseq & UPDATE_MASK].in_qwd;
+
+				// Only write if it was parsed correctly and we've written the original packet to qwd
+				if (cl_demo_qwd_delta.integer && cl.validsequence == cls.netchan.incoming_sequence && delta_valid) {
+					SZ_Write(&cls.demomessage, net_message.data + msg_svc_start, msg_readcount - msg_svc_start);
+				}
+				else {
+					// Write from baselines instead (old way)
+					CL_WriteDemoEntities();
+				}
+				cl.frames[newpacket].in_qwd = true;
 			}
 			else if (cmd == svc_download) {
 				// there's no point in writing it to the demo
@@ -4227,11 +4251,15 @@ static void CL_ParseDemoWeaponInstruction(int size)
 {
 	extern cvar_t cl_debug_weapon_view;
 
-	byte playernum = MSG_ReadByte();
-	byte flags = MSG_ReadByte();
-	int sequence_set = LittleLong(MSG_ReadLong());
-	int mode = LittleLong(MSG_ReadLong());
+	byte playernum;
+	byte flags;
+	int mode;
 	byte weaponlist[10];
+
+	playernum = MSG_ReadByte();
+	flags = MSG_ReadByte();
+	LittleLong(MSG_ReadLong()); // sequence_set =
+	mode = LittleLong(MSG_ReadLong());
 
 	MSG_ReadData(weaponlist, sizeof(weaponlist));
 

@@ -166,12 +166,12 @@ static qbool NET_PacketQueueAdd(packet_queue_t* queue, byte* data, int size, net
 	else if (cl_delay_packet_target.integer && *(int*)data != -1) {
 		if (!queue->outgoing) {
 			// dynamically change delay to target a particular latency
-			int sequence, sequence_ack;
+			int sequence_ack;
 			int sequencemod;
 			double expected_latency;
 
 			MSG_BeginReading();
-			sequence = MSG_ReadLong();
+			MSG_ReadLong(); // sequence =
 			sequence_ack = MSG_ReadLong();
 			sequence_ack &= ~(1 << 31);
 
@@ -1529,6 +1529,13 @@ qbool CL_QueInputPacket(void)
 		return false;
 
 	return NET_PacketQueueAdd(&delay_queue_get, net_message.data, net_message.cursize, net_from);
+}
+
+void CL_ClearQueuedPackets(void)
+{
+	memset(&delay_queue_get, 0, sizeof(delay_queue_get));
+	memset(&delay_queue_send, 0, sizeof(delay_queue_send));
+	delay_queue_send.outgoing = true;
 }
 #endif
 

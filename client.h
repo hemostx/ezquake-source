@@ -49,7 +49,8 @@ typedef struct
 extern cvar_t cl_demospeed;
 extern cvar_t cl_demoteamplay;
 
-#define QTV_PLAYBACK		2			// cls.mvdplayback == QTV_PLAYBACK if QTV playback
+#define MVD_FILE_PLAYBACK   1
+#define QTV_PLAYBACK        2           // cls.mvdplayback == QTV_PLAYBACK if QTV playback
 #define ISPAUSED (cl.paused || (!cl_demospeed.value && cls.demoplayback && cls.mvdplayback != QTV_PLAYBACK && !cls.timedemo))
 #define	MAX_PROJECTILES	32
 
@@ -132,6 +133,7 @@ typedef struct player_info_s
 
 	// Scoreboard information.
 	char	name[MAX_SCOREBOARDNAME];
+	char    shortname[MAX_SCOREBOARDNAME];           // used in tracker, when user wants to remove prefixes
 	float	entertime;
 	int		frags;
 	int		ping;
@@ -202,18 +204,20 @@ typedef struct
 typedef struct 
 {
 	// Generated on client side.
-	usercmd_t			cmd;				// Cmd that generated the frame.
-	double				senttime;			// Time cmd was sent off.
-	int					delta_sequence;		// Sequence number to delta from, -1 = full update.
-	int					sentsize;
+	usercmd_t           cmd;                        // Cmd that generated the frame.
+	double              senttime;                   // Time cmd was sent off.
+	int                 delta_sequence;             // Sequence number to delta from, -1 = full update.
+	int                 sentsize;
 
 	// Received from server.
-	double				receivedtime;		// Time message was received, or -1.
-	player_state_t		playerstate[MAX_CLIENTS];	// Message received that reflects performing the usercmd.
-	packet_entities_t	packet_entities;
-	qbool				invalid;			// True if the packet_entities delta was invalid
-	int					receivedsize;
-	int					seq_when_received;
+	double              receivedtime;               // Time message was received, or -1.
+	player_state_t      playerstate[MAX_CLIENTS];   // Message received that reflects performing the usercmd.
+	packet_entities_t   packet_entities;
+	qbool               invalid;                    // True if the packet_entities delta was invalid
+	int                 receivedsize;
+	int                 seq_when_received;
+
+	qbool               in_qwd;
 } frame_t;
 
 typedef struct centity_trail_s {
@@ -726,7 +730,9 @@ typedef struct {
 
 	// Weapon preferences
 	int         weapon_order[MAXWEAPONS];
+	int         weapon_order_clientside[MAXWEAPONS];
 	int         weapon_order_sequence_set;
+	qbool       weapon_order_use_clientside;
 
 	// When teamlock 1 is specified, lock in the selected team and don't change again
 	char        teamlock1_teamname[16];
@@ -909,6 +915,9 @@ void CL_AutoRecord_StartMatch(char *demoname);
 qbool CL_AutoRecord_Status(void);
 void CL_AutoRecord_SaveMatch(void);
 
+qbool SCR_QTVBufferToBeDrawn(int options);
+int Demo_BufferSize(int* ms);
+
 extern double demostarttime;
 extern double nextdemotime, olddemotime;
 
@@ -1051,6 +1060,7 @@ void CL_ClearProjectiles (void);
 void CL_ParsePacketEntities (qbool delta);
 void CL_SetSolidEntities (void);
 void CL_ParsePlayerinfo (void);
+void CL_StorePausePredictionLocations(void);
 
 
 void MVD_Interpolate(void);
@@ -1188,6 +1198,7 @@ typedef struct cl_delayed_packet_s
 
 qbool CL_QueInputPacket(void);
 qbool CL_UnqueOutputPacket(qbool sendall);
+void CL_ClearQueuedPackets(void);
 
 // ===================================================================================
 
@@ -1253,5 +1264,8 @@ void Dev_TextureList(void);
 // weapons scripts
 int IN_BestWeapon(qbool rendering_only);
 int IN_BestWeaponReal(qbool rendering_only);
+
+// hud_common.c
+void CL_RemovePrefixFromName(int player);
 
 #endif // EZQUAKE_CLIENT_HEADER

@@ -72,15 +72,24 @@
 - Fixed bug causing `/cl_mvinsetcrosshair 1` crosshair to not move with the inset view (#462, 3.2 bug, reported by ptdev)
 - Fixed bug causing `score_enemy`/`score_difference` hud elements to use next player depending on sort rules, rather than best opponent (#469, 3.2 bug, reported by doomie)
 - Fixed bug causing geometry outlines to be rendered incorrectly in sub-views when multiview enabled (3.5 bug)
+- Fixed bug causing 'crouch' step-smoothing to kick in when respawning at a (very) nearby spawn point (old bug)
+- Fixed bug causing "Unset entity number" message & program termination as entnum overwritten from local baselines after avoiding buffer overflow in previous frame (reported during sdCup2 on Discord)
+- Fixed bug causing player to suddenly rotate when game was unpaused as mouse movement during pause suddenly took effect (old bug)
+- Fixed bug causing other players to move around on screen when game is paused (old bug)
+- Fixed bug causing parts of the screen covered by turb surfaces to not be redrawn when translucent with no map support (#473, old bug, reported by HangTime)
+- Fixed bug causing writing to invalid memory when buffer overflows when printing string (very old bug)
+- Fixed bug causing client to keep reading from stream after `/map <mapname>` while connected to QTV (linked to #488, reported by HangTime)
+- Fixed bug causing client to prioritise player with userid in name rather than the userid in `/track`, `/ignore`, `/unignore` (affected autotrack - reported by andeh, exploited by an1k vs userID 1 henu)
 
 ### Ruleset-related changes
 
 - `/gl_outline` now allowed in ruleset `thunderdome` (requested by VVD)
-- `/vid_hwgammacontrol` is now forced on when using ruleset `mtfl` (3.0 bug that this was removed)
 - `/enemyforceskins` descriptions in `f_ruleset` and `f_skins` responses has been clarified to specify individuals will be identifiable (reported by Ake_Vader)
 - `/enemyforceskins` cannot be changed during match (old)
-- sign of value movement speed cvars is ignored (old - used to create `/cl_idrive`-like movement scripts)
+- `/cl_rollangle` is now limited to a maximum of 5 when using rulesets `smackdown`, `qcon` & `thunderdome` (requested by VVD)
 - `/gl_outline` changed to render by projecting backfaces away by surface normal (rather than lines) - to be tested
+- `/vid_hwgammacontrol` is now forced on when using ruleset `mtfl` (3.0 bug that this was removed)
+- sign of value movement speed cvars is ignored (old - used to create `/cl_idrive`-like movement scripts)
 
 ### Debugging protocol changes (weapon scripts)
 
@@ -96,6 +105,8 @@
 
 - `/cfg_backup` will now not save the config if backup cannot be taken (previous behaviour was to over-write)
 - `/cfg_save` will now accept subdirectories (e.g. `/cfg_save backups/test1.cfg`)  Absolute paths are still blocked.
+- `/cl_c2sdupe` will send duplicate packets to the server (a little like Qizmo) (credit to mushi & Spike)
+- `/cl_demo_qwd_delta` will create smaller .qwd files but older clients will be unable to play them back (enabled by default)
 - `/cl_keypad 1` - keypad works as cursor keys in menu
 - `/cl_keypad 2` - keypad will behave as `/cl_keypad 0` in-game, but `/cl_keypad 1` in console etc
 - `/cl_delay_packet_target` - like cl_delay_packet, but half delay is applied to outgoing and the incoming delay is flexible to match the value
@@ -103,17 +114,17 @@
 - `/cl_pext_serversideweapon` - protocol extension to move weapon selection to server (requires updated mvdsv)
 - `/cl_sv_packetsync` - when using internal server & delay packet, controls if server processes packets as they are received (fixes #292)
 - `/cl_weaponforgetondeath` - resets weapon to shotgun when respawning
-- `/cl_weaponforgetorder 2` - sets the best weapon then falls back to sg or axe (as per `/cl_weaponhide_axe`)
+- `/cl_weaponforgetorder` - now sets the best weapon then falls back to sg or axe (as per `/cl_weaponhide_axe`)
 - `/cl_window_caption 2` - window title will be 'ezQuake' and will not change with connection status
 - `/cl_username` & `/authenticate` to support optional logins via badplace.eu (see [guide](https://github.com/ezQuake/ezquake-source/wiki/Authentication))
 - `/demo_format` supported in non-Windows builds
+- `/demo_jump` during demo playback should now be faster (#453)
 - `/enemyforceskins 1` will search for player names in lower case (#345)
 - `/gl_custom_grenade_tf` allows `/gl_custom_grenade_*` variables to be ignored when playing Team Fortress
 ` `/gl_mipmap_viewmodels` removed, replaced with `/gl_texturemode_viewmodels`
 - `/hud_clock_content 1` changes output to show the uptime of the client
 - `/hud_clock_content 2` changes output to show time connected to the server (should match `/cl_clock 1` in oldhud)
-- `/hud_ammo_show_always 1` stops the hud element from being hidden when axe is selected
-- `/hud_iammo_show_always 1` stops the hud element from being hidden when axe is selected
+- `/hud_ammo_show_always 1` (and equivalent `iammo`) shows current ammo when non-ammo weapon is selected (#206, suggested by VianTORISU)
 -` /hud_keys` supports user commands hidden in .mvd files & qtv streams
 - `/in_ignore_touch_events` added - allows mouse clicks from touch input devices
 - `/in_ignore_unfocused_keyb` added - should ignore keyboard events immediately after receiving input focus (linux only)
@@ -122,9 +133,10 @@
 - `/net_tcp_timeout` added - allows timeout period to be set when connecting to QTV etc
 - `/qtv_adjustbuffer 2` added - targets a specific delay period, rather than % of buffer being full
 - `/r_drawflat_mode` allows textures to be shaded rather than solid color (GLSL only)
-- `/register_qwurl_protocol` reports success if run from command line (or rather, run without 'quiet' as 1st argument)
+- `/r_tracker_name_remove_prefixes` is now `/hud_name_remove_prefixes` and affects `teaminfo` as well (also more efficient, #471, req by HangTime)
 - `/r_rockettrail` & `/r_grenadetrail` options requiring QMB particles degrade to '1' if QMB not initialised
 - `/r_smoothalphahack 1` - during hud rendering, shader will apply lerped alpha to lerped color (behaves as per ezquake < 3.5)
+- `/register_qwurl_protocol` reports success if run from command line (or rather, run without 'quiet' as 1st argument)
 - `/scr_sbar_drawarmor666` - `/hud_armor_pent_666` for oldhud (controls if '666' or armor value is shown when player has pent)
 - `/scr_damage_hitbeep` - will play `dmg-notification.wav` when current player does damage (on supported .mvd files & qtv streams)
 - `/scr_damage_floating` - will display floating damage numbers when current player does damage (on supported .mvd files & qtv streams)
@@ -145,7 +157,7 @@
 - `-noatlas` command line option to stop the system building a 2D atlas at startup
 - `-r-nomultibind` command line option to disable calls to glBindTextures
 - `+qtv_delay` command, to be used with `/qtv_adjustbuffer 2`... pauses QTV stream.  When released, QTV buffer length set to length of buffer
-- On startup, `default.cfg` is executed before config is loaded (nQuake configs really need to change now that default.cfg works tho...)
+- On startup, `default.cfg` is executed before config is loaded (nQuake's default.cfg will be ignored)
 - GLSL gamma now supported in classic renderer
 - MVD player lerping is disabled at the point of a player being gibbed (reported by hangtime)
 - Player LG beams hidden during intermission (no more beams in screenshots)
@@ -159,6 +171,8 @@
 - Qizmo-compressed files can be played back using Qizmo on linux
 - When watching mvd/qtv, `/record` & `/stop` become `/mvdrecord` and `/mvdstop` respectively (suggested by hangtime)
 - Internal server has been updated to match latest mvdsv codebase
+- Removed chaticons limitation where source image had to be 256x256 pixels (#477, reported by timbergeron)
+- Demo signoff messages are no longer random
 
 ### Build/meta
 
@@ -169,7 +183,6 @@
 - meson build updated (out of date on 3.5)
 - Fixed build on FreeBSD/powerpc64 (thanks to pkubaj)
 - Remove unsupported 666-deflect message from fragfile.dat (reported by eb, #461)
-- Demo signoff messages are no longer random
 
 # Changes in 3.5 (not released, based on 3.1)
 
@@ -303,7 +316,7 @@
 - Context creation changed, if context can't be created msaa/24bit-depth/hw-accel/srgb then various fallbacks attempted (previously only msaa), rather than falling back directly to software rendering
 - cvars limited by ruleset max/min values weren't checked during application-startup
 - toggling console exits hud_editor mode
-- default.cfg executes on config load/reset (default.cfg in id1/pak0.pak is ignored)
+- default.cfg executes on config load/reset (default.cfg in id1/pak0.pak & nQuake is ignored)
 
 ### Changeover issues/notes
 
@@ -382,6 +395,7 @@
 ### Other changes
 
 - Removed functionality to control external MP3 player through ezQuake
+- Removed unused cvar `/pushlatency`
 
 ### Build/meta
 

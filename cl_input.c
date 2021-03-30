@@ -27,6 +27,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "pmove.h"		// PM_FLY etc
 #include "rulesets.h"
 
+static int IN_BestWeapon_Common(int implicit, int* weapon_order, qbool rendering_only);
+#ifdef C_ASSERT
+C_ASSERT(sizeof(cl.weapon_order_clientside) == sizeof(cl.weapon_order));
+#endif
+
 #ifdef MVD_PEXT1_DEBUG_WEAPON
 static void IN_SendWeaponSelection(int items, int* stats, int* weapon_list, int weapon_choice);
 #else
@@ -37,6 +42,7 @@ cvar_t cl_anglespeedkey       = {"cl_anglespeedkey","1.5"};
 cvar_t cl_backspeed           = {"cl_backspeed","400"};
 cvar_t cl_c2spps              = {"cl_c2spps","0"};
 cvar_t cl_c2sImpulseBackup    = {"cl_c2sImpulseBackup","3"};
+cvar_t cl_c2sdupe             = {"cl_c2sdupe", "0"};
 cvar_t cl_forwardspeed        = {"cl_forwardspeed","400"};
 cvar_t cl_smartjump           = {"cl_smartjump", "1"};
 cvar_t cl_iDrive              = {"cl_iDrive", "0", 0, Rulesets_OnChange_cl_iDrive};
@@ -77,7 +83,7 @@ extern qbool physframe;
 extern double physframetime;
 
 #define CL_INPUT_WEAPONHIDE_DUE_TO_DEATH(health) ( \
-	(cl_weaponforgetondeath.integer && cl_weaponhide.integer && (health) <= 0) \
+	(cl_weaponforgetondeath.integer && (health) <= 0) \
 )
 #define CL_INPUT_WEAPONHIDE(health) ( \
 	(cl_weaponhide.integer == 1) || \
@@ -113,12 +119,28 @@ kbutton_t in_up, in_down;
 static int in_next_impulse;
 static qbool suppress_hide;
 
+// Over-writes weapon selection list
+// Called even if server-side weapon switching is enabled
+static void ForgetWeaponOrder(int impulse, int* weapon_order)
+{
+	weapon_order[0] = impulse;
+	weapon_order[1] = (cl_weaponhide_axe.integer || impulse == 2 ? 1 : 2);
+	weapon_order[2] = (weapon_order[1] == 1 ? 0 : 1);
+	weapon_order[3] = 0;
+}
+
 static void SetNextImpulse(int impulse, qbool from_weapon_script, qbool set_best_weapon)
 {
 #ifdef MVD_PEXT1_SERVERSIDEWEAPON
 	if (from_weapon_script && (cls.mvdprotocolextensions1 & MVD_PEXT1_SERVERSIDEWEAPON) && cl_pext_serversideweapon.integer) {
 		in_next_impulse = 0;
 		suppress_hide = false;
+		if (set_best_weapon && cl_weaponforgetorder.integer) {
+			// we can't over-write cl.weapon_order so keep a copy and use that until the server confirms best selection
+			memcpy(cl.weapon_order_clientside, cl.weapon_order, sizeof(cl.weapon_order_clientside));
+			cl.weapon_order_use_clientside = true;
+			ForgetWeaponOrder(impulse, cl.weapon_order_clientside);
+		}
 		return;
 	}
 #endif
@@ -126,16 +148,8 @@ static void SetNextImpulse(int impulse, qbool from_weapon_script, qbool set_best
 	suppress_hide = !from_weapon_script;
 	in_next_impulse = impulse;
 
-	if (set_best_weapon) {
-		if (cl_weaponforgetorder.integer) {
-			cl.weapon_order[0] = impulse;
-
-			if (cl_weaponforgetorder.integer == 2) {
-				cl.weapon_order[1] = (cl_weaponhide_axe.integer ? 1 : 2);
-				cl.weapon_order[2] = 1;
-				cl.weapon_order[3] = 0;
-			}
-		}
+	if (set_best_weapon && cl_weaponforgetorder.integer) {
+		ForgetWeaponOrder(impulse, cl.weapon_order);
 	}
 }
 
@@ -446,8 +460,6 @@ void IN_RememberWpOrder (void)
 	}
 }
 
-static int IN_BestWeapon_Common(int implicit, int* weapon_order, qbool rendering_only);
-
 // picks the best available (carried & having some ammunition) weapon according to users current preference
 // or if the intersection (wished * carried) is empty
 // select the top wished weapon
@@ -461,6 +473,9 @@ int IN_BestWeapon(qbool rendering_only)
 // select the current weapon
 int IN_BestWeaponReal(qbool rendering_only)
 {
+	if (cl.weapon_order_use_clientside && rendering_only) {
+		return IN_BestWeapon_Common(in_next_impulse, cl.weapon_order_clientside, rendering_only);
+	}
 	return IN_BestWeapon_Common(in_next_impulse, cl.weapon_order, rendering_only);
 }
 
@@ -939,11 +954,17 @@ void CL_FinishMove(usercmd_t *cmd)
 
 	VectorCopy (cl.viewangles, cmd->angles);
 
-	if (!cl.spectator && CL_INPUT_WEAPONHIDE_DUE_TO_DEATH(cl.stats[STAT_HEALTH])) {
-		cl.weapon_order[0] = in_next_impulse = (cl_weaponhide_axe.integer ? 1 : 2);
-		cl.weapon_order[1] = 1;
-		cl.weapon_order[2] = 0;
+#ifdef MVD_PEXT1_SERVERSIDEWEAPON
+	if (!(cls.mvdprotocolextensions1 & MVD_PEXT1_SERVERSIDEWEAPON)) {
+#endif
+		if (!cl.spectator && CL_INPUT_WEAPONHIDE_DUE_TO_DEATH(cl.stats[STAT_HEALTH])) {
+			cl.weapon_order[0] = in_next_impulse = (cl_weaponhide_axe.integer ? 1 : 2);
+			cl.weapon_order[1] = 1;
+			cl.weapon_order[2] = 0;
+		}
+#ifdef MVD_PEXT1_SERVERSIDEWEAPON
 	}
+#endif
 
 	// shaman RFE 1030281 {
 	// KTPro's KFJump == impulse 156
@@ -1307,6 +1328,9 @@ void CL_SendCmd(void)
 	// network stats table
 	network_stats[cls.netchan.outgoing_sequence&NETWORK_STATS_MASK].sentsize = buf.cursize + 8;
 
+	//send duplicated packets, if set
+	cls.netchan.dupe = bound(0, cl_c2sdupe.value, MAX_DUPLICATE_PACKETS);
+
 	// deliver the message
 	Netchan_Transmit (&cls.netchan, buf.cursize, buf.data);
 }
@@ -1392,11 +1416,11 @@ void CL_InitInput(void)
 	Cvar_Register(&m_accel_offset);
 	Cvar_Register(&m_accel_senscap);
 
-
 	Cvar_SetCurrentGroup(CVAR_GROUP_NETWORK);
 	Cvar_Register(&cl_nodelta);
 	Cvar_Register(&cl_c2sImpulseBackup);
 	Cvar_Register(&cl_c2spps);
+	Cvar_Register(&cl_c2sdupe);
 
 	Cvar_ResetCurrentGroup();
 
@@ -1428,3 +1452,33 @@ void onchange_pext_serversideweapon(cvar_t* var, char* value, qbool* cancel)
 	cl.weapon_order_sequence_set = cls.netchan.outgoing_sequence;
 }
 
+void IN_ServerSideWeaponSelectionResponse(const char* s)
+{
+	if ((cls.mvdprotocolextensions1 & MVD_PEXT1_SERVERSIDEWEAPON) && cl_pext_serversideweapon.integer) {
+		if (cl_weaponforgetorder.integer) {
+			int sequence_set, best_impulse;
+
+			Cmd_TokenizeString(s);
+
+			// expected args: <sequence-set> <best-weapon-impulse>
+			if (Cmd_Argc() < 2) {
+				return;
+			}
+
+			sequence_set = atoi(Cmd_Argv(0));
+			best_impulse = atoi(Cmd_Argv(1));
+
+			if (sequence_set == cl.weapon_order_sequence_set && best_impulse) {
+				Con_DPrintf("Confirmed best selection: %d vs %d\n", best_impulse, cl.weapon_order[0]);
+				cl.weapon_order[0] = best_impulse;
+				cl.weapon_order_use_clientside = false;
+			}
+			else if (sequence_set != cl.weapon_order_sequence_set) {
+				Con_DPrintf("Out of date response: %d vs %d\n", sequence_set, cl.weapon_order_sequence_set);
+			}
+		}
+		else {
+			cl.weapon_order_use_clientside = false;
+		}
+	}
+}
