@@ -1195,6 +1195,8 @@ static void VXSCR_DrawTrackerString(float x_pos, float y_pos, float width, int n
 	// the latest ones are always shown.
 	y = y_pos;
 	for (i = 0; i < max_active_tracks; i++) {
+		int initial_position;
+
 		// Time expired for this tracker, don't draw it.
 		if (trackermsg[i].die < r_refdef2.time) {
 			continue;
@@ -1213,33 +1215,11 @@ static void VXSCR_DrawTrackerString(float x_pos, float y_pos, float width, int n
 			x = x_pos + (align_right ? width - (printable_chars + 1) * width_one_char : width_one_char);
 		}
 		else {
-			int offset = 0;
-			if (align_right) {
-				for (s = 0; s < trackermsg[i].segments; ++s) {
-					void* pic = trackermsg[i].images[s];
-
-					if (pic) {
-						offset += 8 * 2 * scale;
-					}
-					else {
-						if (trackermsg[i].pad && padded_width && !trackermsg[i].text_flags[s]) {
-							offset += padded_width;
-						}
-						else {
-							offset += Draw_StringLength(trackermsg[i].text[s], -1, scale, proportional);
-						}
-					}
-
-					offset += 8 * scale;
-				}
-				x = x_pos + (width - offset);
-			}
-			else {
-				x = x_pos + width_one_char;
-			}
+			x = x_pos + width_one_char;
 		}
 
 		// Draw the segments.
+		initial_position = Draw_ImagePosition();
 		for (s = 0; s < trackermsg[i].segments; ++s) {
 			mpic_t* pic = trackermsg[i].images[s];
 
@@ -1271,6 +1251,12 @@ static void VXSCR_DrawTrackerString(float x_pos, float y_pos, float width, int n
 			}
 
 			x += 8 * scale;
+		}
+		if (proportional && align_right) {
+			// shift into correct location, now we know where it ended
+			int new_draw_position = Draw_ImagePosition();
+
+			Draw_AdjustImages(initial_position, new_draw_position, width - (x - x_pos));
 		}
 
 		y += 8 * scale;	// Next line.
