@@ -37,6 +37,7 @@
 - Fixed bug causing client to prioritise player with userid in name rather than the userid in `/track`, `/ignore`, `/unignore` (affected autotrack - reported by andeh, exploited by an1k vs userID 1 henu)
 - Fixed bug causing client to receive playerinfo packet before knowing which protocol extensions are enabled when using `/cl_delay_packet` on local server (#488, reported by pattah)
 - Fixed bug causing fps to affect `/cl_yawspeed`/`+left`/`+right` commands (keyboard turning) (old bug, #550, reported by veganaize)
+- Fixed bug causing missing entities when playing back demos recorded in FTE (old bug, #551, reported by lordee)
 
 ### Bugs which affected 3.x
 
@@ -50,6 +51,7 @@
 - Fixed bug causing "Unset entity number" message & program termination as entnum overwritten from local baselines after avoiding buffer overflow in previous frame (reported during sdCup2 on Discord)
 - Fixed bug causing `/cl_mvinsetcrosshair 1` crosshair to not move with the inset view (#462, 3.2 bug, reported by ptdev)
 - Fixed bug causing `/scr_cursor_iconoffset_x` & `/scr_cursor_iconoffset_y` to have no effect (3.x bug, fix by ciscon)
+- Workaround applied to show players when playing back demos using FTE model extensions where player index >= 256 (3.1+ bug (no support in older clients), #551, reported by lordee)
 
 #### Bugs which affected 3.5 (typically related to renderer rewrite)
 
@@ -89,6 +91,8 @@
 - Fixed bug causing differences in rendering md3 viewmodels in glsl vs std renderer (explosion surface is additive - same awful hack until we support shaders) (3.5 bug but 3.2 was even worse)
 - Fixed bug causing aliasmodels to be rendered with the normal map overlaid instead of caustics texture (#457, 3.5 bug, reported by hammer)
 - Fixed bug causing geometry outlines to be rendered incorrectly in sub-views when multiview enabled (3.5 bug)
+- Fixed bug causing invalid lightmap rendering when using drawflat and map load caused number of lightmaps to increase (3.5 bug, found during #540)
+- Fixed bug causing unlit lightmap data to be set to fullbright on first map load after watching demo/qtv stream with r_fullbright enabled (3.5 bug, reported by HangTime)
 
 ### Ruleset-related changes
 
@@ -136,10 +140,11 @@
 - `/hud_ammo_show_always 1` (and equivalent `iammo`) shows current ammo when non-ammo weapon is selected (#206, suggested by VianTORISU)
 - `/hud_clock_content 1` changes output to show the uptime of the client
 - `/hud_clock_content 2` changes output to show time connected to the server (should match `/cl_clock 1` in oldhud)
-- `/hud_fps_drop <negative>` will be treated as relative to `cl_maxfps`, e.g. `/hud_fps_drop -5;/cl_maxfps 1001` will show when fps drops to 996
+- `/hud_fps_drop <negative>` will be treated as relative to `/cl_maxfps`, e.g. `/hud_fps_drop -5;/cl_maxfps 1001` will show when fps drops to 996
 -` /hud_keys` supports user commands hidden in .mvd files & qtv streams
 - `/in_ignore_touch_events` added - allows mouse clicks from touch input devices
 - `/in_ignore_unfocused_keyb` added - should ignore keyboard events immediately after receiving input focus (linux only)
+- `/in_ignore_deadkeys` added - essentially `/in_builtin_keyboard 1` when option key held down (macos only, #111, reported by bogojoker)
 - `/menu_botmatch_gamedir` added - allows packages to customise the directory when starting a bot match
 - `/menu_botmatch_mod_old` added - controls if newer features should be disabled when starting a bot match (to support fbca, lgc etc)
 - `/net_tcp_timeout` added - allows timeout period to be set when connecting to QTV etc
@@ -171,8 +176,9 @@
 - `-r-nomultibind` command line option to disable calls to glBindTextures
 - `+qtv_delay` command, to be used with `/qtv_adjustbuffer 2`... pauses QTV stream.  When released, QTV buffer length set to length of buffer
 - On startup, `default.cfg` is executed before config is loaded (nQuake's default.cfg will be ignored)
+- On startup (after `autoexec.cfg` executed), a `vid_restart`/`s_restart` will be issued if any latched variables were changed (#458)
 - GLSL gamma now supported in classic renderer
-- MVD player lerping is disabled at the point of a player being gibbed (reported by hangtime)
+- MVD player lerping is disabled at the point of a player being gibbed (reported by HangTime)
 - Player LG beams hidden during intermission (no more beams in screenshots)
 - ezQuake will re-calculate normals on shared vertices as model is loaded (bug in models with normals set per-surface)
 - When gameplay-related protocols are enabled but not supported by server, you will be warned during connection
@@ -182,7 +188,7 @@
 - PNG warning messages now printed to console rather than stdout
 - Added macro $timestamp, which is in format YYYYMMDD-hhmmss
 - Qizmo-compressed files can be played back using Qizmo on linux
-- When watching mvd/qtv, `/record` & `/stop` become `/mvdrecord` and `/mvdstop` respectively (suggested by hangtime)
+- When watching mvd/qtv, `/record` & `/stop` become `/mvdrecord` and `/mvdstop` respectively (suggested by HangTime)
 - Internal server has been updated to match latest mvdsv codebase
 - Removed chaticons limitation where source image had to be 256x256 pixels (#477, reported by timbergeron)
 - Demo signoff messages are no longer random
