@@ -71,7 +71,7 @@ static qbool block_keyboard_input = false;
 #endif
 #ifdef __APPLE__
 static int deadkey_modifiers_held_down = 0;
-static cvar_t in_ignore_deadkeys = { "in_ignore_deadkeys", "1" };
+static cvar_t in_ignore_deadkeys = { "in_ignore_deadkeys", "1", CVAR_SILENT };
 
 #define APPLE_RALT_HELD_DOWN 1
 #define APPLE_LALT_HELD_DOWN 2
@@ -218,6 +218,7 @@ cvar_t vid_framebuffer_hdr         = {"vid_framebuffer_hdr",           "0",     
 cvar_t vid_framebuffer_hdr_tonemap = {"vid_framebuffer_hdr_tonemap",   "0" };
 cvar_t vid_framebuffer_smooth      = {"vid_framebuffer_smooth",        "1",       CVAR_NO_RESET, framebuffer_smooth_changed_callback };
 cvar_t vid_framebuffer_sshotmode   = {"vid_framebuffer_sshotmode",     "1" };
+cvar_t vid_framebuffer_multisample = {"vid_framebuffer_multisample",   "0" };
 
 //
 // function declaration
@@ -245,6 +246,13 @@ qbool IN_QuakeMouseCursorRequired(void)
 	return mouse_active && IN_MouseTrackingRequired() && !IN_OSMouseCursorRequired();
 }
 
+static void IN_SnapMouseBackToCentre(void)
+{
+	SDL_WarpMouseInWindow(sdl_window, glConfig.vidWidth / 2, glConfig.vidHeight / 2);
+	old_x = glConfig.vidWidth / 2;
+	old_y = glConfig.vidHeight / 2;
+}
+
 static void in_raw_callback(cvar_t *var, char *value, qbool *cancel)
 {
 	if (var == &in_raw)
@@ -260,20 +268,22 @@ static void in_grab_windowed_mouse_callback(cvar_t *val, char *value, qbool *can
 
 static void GrabMouse(qbool grab, qbool raw)
 {
-	if ((grab && mouse_active && raw == in_raw.integer) || (!grab && !mouse_active) || !mouseinitialized || !sdl_window)
+	if ((grab && mouse_active && raw == in_raw.integer) || (!grab && !mouse_active) || !mouseinitialized || !sdl_window) {
 		return;
+	}
 
-	if (!r_fullscreen.integer && in_grab_windowed_mouse.integer == 0)
-	{
-		if (!mouse_active)
+	if (!r_fullscreen.integer && in_grab_windowed_mouse.integer == 0) {
+		if (!mouse_active) {
 			return;
+		}
 		grab = 0;
 	}
+
 	// set initial position
 	if (!raw && grab) {
-		SDL_WarpMouseInWindow(sdl_window, glConfig.vidWidth / 2, glConfig.vidHeight / 2);
-		old_x = glConfig.vidWidth / 2;
-		old_y = glConfig.vidHeight / 2;
+		// the first getState() will still return the old values so snapping back doesn't work...
+		// ... open problem, people will get a jump if releasing mouse when re-grabbing with in_raw 0
+		IN_SnapMouseBackToCentre();
 	}
 
 	SDL_SetWindowGrab(sdl_window, grab ? SDL_TRUE : SDL_FALSE);
@@ -287,7 +297,8 @@ static void GrabMouse(qbool grab, qbool raw)
 		SDL_ShowCursor(grab ? SDL_DISABLE : SDL_ENABLE);
 	}
 
-	SDL_SetCursor(NULL); /* Force rewrite of it */
+	// Force rewrite of it
+	SDL_SetCursor(NULL);
 
 	mouse_active = grab;
 }
@@ -309,6 +320,9 @@ void IN_StartupMouse(void)
 	mouseinitialized = true;
 
 	Com_Printf("%s mouse input initialized\n", in_raw.integer > 0 ? "RAW" : "SDL");
+	if (in_raw.integer == 0) {
+		IN_SnapMouseBackToCentre();
+	}
 }
 
 void IN_ActivateMouse(void)
@@ -803,6 +817,7 @@ static void HandleWindowsKeyboardEvents(unsigned int flags, qbool down)
 static void HandleEvents(void)
 {
 	SDL_Event event;
+	qbool track_movement_through_state = (mouse_active && !SDL_GetRelativeMouseMode());
 
 #if defined(_WIN32) && !defined(WITHOUT_WINKEYHOOK)
 	HandleWindowsKeyboardEvents(windows_keys_down, true);
@@ -838,18 +853,7 @@ static void HandleEvents(void)
 					Con_Printf("motion event, which=%d\n", event.motion.which);
 				}
 #endif
-				if (mouse_active && !SDL_GetRelativeMouseMode()) {
-					float factor = (IN_MouseTrackingRequired() ? cursor_sensitivity.value : 1);
-
-					mx = event.motion.x - old_x;
-					my = event.motion.y - old_y;
-					cursor_x = min(max(0, cursor_x + (event.motion.x - glConfig.vidWidth / 2) * factor), VID_RenderWidth2D());
-					cursor_y = min(max(0, cursor_y + (event.motion.y - glConfig.vidHeight / 2) * factor), VID_RenderHeight2D());
-					SDL_WarpMouseInWindow(sdl_window, glConfig.vidWidth / 2, glConfig.vidHeight / 2);
-					old_x = glConfig.vidWidth / 2;
-					old_y = glConfig.vidHeight / 2;
-				}
-				else {
+				if (!track_movement_through_state) {
 					float factor = (IN_MouseTrackingRequired() ? cursor_sensitivity.value : 1);
 
 					cursor_x += event.motion.xrel * factor;
@@ -884,6 +888,21 @@ static void HandleEvents(void)
 			SDL_free(event.drop.file);
 			break;
 		}
+	}
+
+	if (track_movement_through_state) {
+		float factor = (IN_MouseTrackingRequired() ? cursor_sensitivity.value : 1);
+		int pos_x, pos_y;
+
+		SDL_GetMouseState(&pos_x, &pos_y);
+
+		mx = pos_x - old_x;
+		my = pos_y - old_y;
+
+		cursor_x = min(max(0, cursor_x + (pos_x - glConfig.vidWidth / 2) * factor), VID_RenderWidth2D());
+		cursor_y = min(max(0, cursor_y + (pos_y - glConfig.vidHeight / 2) * factor), VID_RenderHeight2D());
+
+		IN_SnapMouseBackToCentre();
 	}
 }
 
@@ -1010,6 +1029,7 @@ void VID_RegisterCvars(void)
 	Cvar_Register(&vid_framebuffer_hdr_tonemap);
 	Cvar_Register(&vid_framebuffer_smooth);
 	Cvar_Register(&vid_framebuffer_sshotmode);
+	Cvar_Register(&vid_framebuffer_multisample);
 
 	Cvar_ResetCurrentGroup();
 }
@@ -1349,6 +1369,11 @@ static void VID_SDL_Init(void)
 #endif
 	SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, vid_grab_keyboard.integer == 0 ? "0" : "1");
 	SDL_SetHintWithPriority(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, "0", SDL_HINT_OVERRIDE);
+#ifdef __APPLE__
+#ifdef SDL_HINT_TOUCH_MOUSE_EVENTS
+	SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+#endif
+#endif
 
 	{
 		int i;

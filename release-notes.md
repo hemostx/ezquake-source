@@ -51,7 +51,9 @@
 - Fixed bug causing "Unset entity number" message & program termination as entnum overwritten from local baselines after avoiding buffer overflow in previous frame (reported during sdCup2 on Discord)
 - Fixed bug causing `/cl_mvinsetcrosshair 1` crosshair to not move with the inset view (#462, 3.2 bug, reported by ptdev)
 - Fixed bug causing `/scr_cursor_iconoffset_x` & `/scr_cursor_iconoffset_y` to have no effect (3.x bug, fix by ciscon)
+- Fixed bug causing `/in_raw 0` to produce no mouse input in-game on MacOS
 - Workaround applied to show players when playing back demos using FTE model extensions where player index >= 256 (3.1+ bug (no support in older clients), #551, reported by lordee)
+- Fixed `/demo_jump_mark` not working if `/demo_jump_rewind` not set
 
 #### Bugs which affected 3.5 (typically related to renderer rewrite)
 
@@ -93,6 +95,7 @@
 - Fixed bug causing geometry outlines to be rendered incorrectly in sub-views when multiview enabled (3.5 bug)
 - Fixed bug causing invalid lightmap rendering when using drawflat and map load caused number of lightmaps to increase (3.5 bug, found during #540)
 - Fixed bug causing unlit lightmap data to be set to fullbright on first map load after watching demo/qtv stream with r_fullbright enabled (3.5 bug, reported by HangTime)
+- Fixed bug causing off-by-one error when drawing rectangle outlines (3.5 bug, reported by Matrix, #536)
 
 ### Ruleset-related changes
 
@@ -103,6 +106,7 @@
 - `/gl_outline` changed to render by projecting backfaces away by surface normal (rather than lines) - to be tested
 - `/vid_hwgammacontrol` is now forced on when using ruleset `mtfl` (3.0 bug that this was removed)
 - sign of value movement speed cvars is ignored (old - used to create `/cl_idrive`-like movement scripts)
+- Immediate logging of the console (`-condebug`) is disabled during games when using competitive rulesets
 
 ### Debugging protocol changes (weapon scripts)
 
@@ -132,6 +136,8 @@
 - `/cl_username` & `/authenticate` to support optional logins via badplace.eu (see [guide](https://github.com/ezQuake/ezquake-source/wiki/Authentication))
 - `/demo_format` supported in non-Windows builds
 - `/demo_jump` during demo playback should now be faster (#453)
+- `/demo_jump_end` to jump to next intermission point or end of demo (requested by Hangtime, #564)
+- `/demo_jump_skip_messages` to determine if messages should be printed to console during demo jump
 - `/enemyforceskins 1` will search for player names in lower case (#345)
 - `/gl_custom_grenade_tf` allows `/gl_custom_grenade_*` variables to be ignored when playing Team Fortress
 - `/gl_mipmap_viewmodels` removed, replaced with `/gl_texturemode_viewmodels`
@@ -154,6 +160,7 @@
 - `/r_rockettrail` & `/r_grenadetrail` options requiring QMB particles degrade to '1' if QMB not initialised
 - `/r_smoothalphahack 1` - during hud rendering, shader will apply lerped alpha to lerped color (behaves as per ezquake < 3.5)
 - `/register_qwurl_protocol` reports success if run from command line (or rather, run without 'quiet' as 1st argument)
+- `/sb_info_filter` added - allows filtering of servers in server-browser based on serverinfo
 - `/scr_sbar_drawarmor666` - `/hud_armor_pent_666` for oldhud (controls if '666' or armor value is shown when player has pent)
 - `/scr_damage_hitbeep` - will play `dmg-notification.wav` when current player does damage (on supported .mvd files & qtv streams)
 - `/scr_damage_floating` - will display floating damage numbers when current player does damage (on supported .mvd files & qtv streams)
@@ -162,12 +169,17 @@
 - `/scr_scoreboard_login_indicator` will be shown next to a player's name when they are logged in (if flag not available)
 - `/scr_scoreboard_login_color` controls the color of a player's name when they are logged in
 - `/set_ex2` command added, same functionality as `/set_ex` but doesn't resolve funchars - useful if script needs to compare value later (#428)
+- `/status` command will be ignored if an alias with the same name is found, use `/sv_status` instead (#532)
 - `/timedemo` commands show extra info at end to try and highlight stutter (measuring worst frametimes)
 - `/timedemo2` command renders demo in stop-motion at a particular fps
 - `/tp_poweruptextstyle` controls if `$colored_powerups` or `$colored_short_powerups` is used in internal reporting commands
 - `/tp_point` will show targets in priority order, if `/tp_pointpriorities` is enabled
+- `/v_dlightcolor` added - controls if being inside flashblend light affects palette by color of light
+- `/v_dlightcshiftpercent` added - controls strength of palette shift effect when inside flashblend light
+- `/v_dlightcshift` changed - now enum of when being inside flashblend light affects palette (requested by HangTime, #542)
 - `/vid_framebuffer_smooth` controls linear or nearest filtering (thanks to Calinou)
 - `/vid_framebuffer_sshotmode` controls if screenshot is of framebuffer or screen size
+- `/vid_framebuffer_multisample` controls multi-sampling level of the framebuffer (reported by Matrix, #367)
 - `/vid_hwgamma_fps` controls how frequency the gamma of the monitor will be set if hardware gamma is enabled
 - `-oldgamma` command line option to re-instate old `-gamma` behaviour
 - `-r-trace` command line option in debug build - writes out API calls for each frame to qw/trace/ directory (will kill fps, just for debugging)
@@ -186,12 +198,15 @@
 - Added hud element 'frametime', similar to fps but measuring (max) frametime
 - Changed file-handling when viewing demos from within .zip|.gz to reduce temporary files being left on hard drive
 - PNG warning messages now printed to console rather than stdout
-- Added macro $timestamp, which is in format YYYYMMDD-hhmmss
+- Added macro $timestamp, which is in format YYYYMMDD-hhmm
 - Qizmo-compressed files can be played back using Qizmo on linux
 - When watching mvd/qtv, `/record` & `/stop` become `/mvdrecord` and `/mvdstop` respectively (suggested by HangTime)
 - Internal server has been updated to match latest mvdsv codebase
 - Removed chaticons limitation where source image had to be 256x256 pixels (#477, reported by timbergeron)
 - Demo signoff messages are no longer random
+- Multiview will be disabled when watching a solo demo and no powerup cams are active (requested by mmavova, #126)
+- qw:// urls in command line will be opened even if not preceded by `+qwurl` (thanks to ciscon)
+- Linux: `/register_qwurl_protocol` command will register protocol with xdg (thanks to ciscon)
 
 ### Build/meta
 
