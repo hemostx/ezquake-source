@@ -38,6 +38,7 @@
 - Fixed bug causing client to receive playerinfo packet before knowing which protocol extensions are enabled when using `/cl_delay_packet` on local server (#488, reported by pattah)
 - Fixed bug causing fps to affect `/cl_yawspeed`/`+left`/`+right` commands (keyboard turning) (old bug, #550, reported by veganaize)
 - Fixed bug causing missing entities when playing back demos recorded in FTE (old bug, #551, reported by lordee)
+- Translucent models are first drawn with a z-pass, to stop overdraw affecting level of translucency
 
 ### Bugs which affected 3.x
 
@@ -54,6 +55,7 @@
 - Fixed bug causing `/in_raw 0` to produce no mouse input in-game on MacOS
 - Workaround applied to show players when playing back demos using FTE model extensions where player index >= 256 (3.1+ bug (no support in older clients), #551, reported by lordee)
 - Fixed `/demo_jump_mark` not working if `/demo_jump_rewind` not set
+- Horizontal field of view limit has increased to 165 (screen ratio adjustment previously limited this to 127 on 16:9) (#389, 3.0 issue)
 
 #### Bugs which affected 3.5 (typically related to renderer rewrite)
 
@@ -110,9 +112,6 @@
 
 ### Debugging protocol changes (weapon scripts)
 
-- `/cl_debug_weapon_send`: sends information about client-side weapon selection, which is stored in .mvd on supported servers
-- `/cl_debug_weapon_view`: views the client-side weapon debugging messages, if stored in .mvd
-
 - `/cl_debug_antilag_send`: sends location of opponents, which is stored in .mvd on supported servers
 - `/cl_debug_antilag_view`: chooses which location is used when rendering players on supported .mvd/qtv streams (0 = normal, 1 = antilag-rewind, 2 = client position)
 - `/cl_debug_antilag_ghost`: allows rendering a translucent copy of player position on support .mvd/qtv streams (0 = normal, 1 = antilag-rewind, 2 = client position)
@@ -128,9 +127,7 @@
 - `/cl_keypad 2` - keypad will behave as `/cl_keypad 0` in-game, but `/cl_keypad 1` in console etc
 - `/cl_delay_packet_target` - like cl_delay_packet, but half delay is applied to outgoing and the incoming delay is flexible to match the value
 - `/cl_net_clientport` - allows the network client port to be specified in-game (rather than just `-clientport` command line switch)
-- `/cl_pext_serversideweapon` - protocol extension to move weapon selection to server (requires updated mvdsv)
 - `/cl_sv_packetsync` - when using internal server & delay packet, controls if server processes packets as they are received (fixes #292)
-- `/cl_weaponforgetondeath` - resets weapon to shotgun when respawning
 - `/cl_weaponforgetorder` - now sets the best weapon then falls back to sg or axe (as per `/cl_weaponhide_axe`)
 - `/cl_window_caption 2` - window title will be 'ezQuake' and will not change with connection status
 - `/cl_username` & `/authenticate` to support optional logins via badplace.eu (see [guide](https://github.com/ezQuake/ezquake-source/wiki/Authentication))
