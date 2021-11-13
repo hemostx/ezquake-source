@@ -76,6 +76,7 @@
 - `/gl_outline 2` fixed (3.5 bug, reported by fourier)
 - `/gl_shaftlight 0` fixed on glsl path in classic renderer (3.5 bug, reported by maniac)
 - `/r_dynamic 2` was calculating too many lightmaps (3.5 bug, reported by ciscon)
+- `/gl_no24bit` wasn't disabling loading external textures (3.5 bug, kind of reported by hemostx, #601)
 - Fixed bug causing invalid texture references to be used if `/vid_restart` issued while disconnected (3.5 bug)
 - Fixed bug causing oblique particles if sprite array dimensions were unmatched (width != height) (3.5 bug - reported by ciscon)
 - Fixed bug causing flashblend to render as transparent if sprite array dimensions were unmatched (width != height) (3.5 bug - reported by ciscon)
@@ -136,6 +137,7 @@
 - `/demo_jump_end` to jump to next intermission point or end of demo (requested by Hangtime, #564)
 - `/demo_jump_skip_messages` to determine if messages should be printed to console during demo jump
 - `/enemyforceskins 1` will search for player names in lower case (#345)
+- `/fs_savegame_home` added, controls if games saved to home directory (default) or game directory (reported by githubtefo, #586)
 - `/gl_custom_grenade_tf` allows `/gl_custom_grenade_*` variables to be ignored when playing Team Fortress
 - `/gl_mipmap_viewmodels` removed, replaced with `/gl_texturemode_viewmodels`
 - `/gl_turb_fire` added, controls if QMB explosions/fire spawn bubbles underwater
@@ -184,6 +186,7 @@
 - `-noatlas` command line option to stop the system building a 2D atlas at startup
 - `-r-nomultibind` command line option to disable calls to glBindTextures
 - `+qtv_delay` command, to be used with `/qtv_adjustbuffer 2`... pauses QTV stream.  When released, QTV buffer length set to length of buffer
+- `+fire_ar` command added, an anti-rollover `+fire` - experimental, should simplify weapon scripts
 - On startup, `default.cfg` is executed before config is loaded (nQuake's default.cfg will be ignored)
 - On startup (after `autoexec.cfg` executed), a `vid_restart`/`s_restart` will be issued if any latched variables were changed (#458)
 - GLSL gamma now supported in classic renderer
@@ -204,6 +207,7 @@
 - Multiview will be disabled when watching a solo demo and no powerup cams are active (requested by mmavova, #126)
 - qw:// urls in command line will be opened even if not preceded by `+qwurl` (thanks to ciscon)
 - Linux: `/register_qwurl_protocol` command will register protocol with xdg (thanks to ciscon)
+- Commands that search by regular expression (`/cvarlist_re` etc) are now case-insensitive (reported by HangTime, #599)
 
 ### Build/meta
 
