@@ -32,7 +32,6 @@ static void OnChange_gl_texturemode(cvar_t *var, char *string, qbool *cancel);
 static void OnChange_gl_miptexLevel(cvar_t *var, char *string, qbool *cancel);
 static void OnChange_gl_anisotropy(cvar_t *var, char *string, qbool *cancel);
 
-// not sure what to do with lerpimages - I *think* it needs a reload and should latch
 cvar_t gl_lerpimages = { "gl_lerpimages", "1", CVAR_LATCH_GFX };
 static cvar_t gl_externalTextures_world = { "gl_externalTextures_world", "1", CVAR_LATCH_GFX };
 static cvar_t gl_externalTextures_bmodels = { "gl_externalTextures_bmodels", "1", CVAR_LATCH_GFX };
@@ -188,7 +187,6 @@ void R_TextureRegisterCvars(void)
 	// latch cvars
 	Cvar_Register(&gl_externalTextures_world);
 	Cvar_Register(&gl_externalTextures_bmodels);
-	// not sure what to do with lerpimages - I *think* it needs a reload and should latch
 	Cvar_Register(&gl_lerpimages);
 	Cvar_Register(&gl_no24bit);
 	Cvar_Register(&gl_picmip);
