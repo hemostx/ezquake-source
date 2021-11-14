@@ -38,6 +38,7 @@
 - Fixed bug causing client to receive playerinfo packet before knowing which protocol extensions are enabled when using `/cl_delay_packet` on local server (#488, reported by pattah)
 - Fixed bug causing fps to affect `/cl_yawspeed`/`+left`/`+right` commands (keyboard turning) (old bug, #550, reported by veganaize)
 - Fixed bug causing missing entities when playing back demos recorded in FTE (old bug, #551, reported by lordee)
+- Fixed bug causing toggling `/gl_no24bit` 1 => 0 causing maximum of a single QMB particle (old bug, #604, reported by hemostx)
 - Translucent models are first drawn with a z-pass, to stop overdraw affecting level of translucency
 
 ### Bugs which affected 3.x
@@ -99,6 +100,7 @@
 - Fixed bug causing invalid lightmap rendering when using drawflat and map load caused number of lightmaps to increase (3.5 bug, found during #540)
 - Fixed bug causing unlit lightmap data to be set to fullbright on first map load after watching demo/qtv stream with r_fullbright enabled (3.5 bug, reported by HangTime)
 - Fixed bug causing off-by-one error when drawing rectangle outlines (3.5 bug, reported by Matrix, #536)
+- Fixed bug causing `/gl_no24bit` to not affect aliasmodel skins (3.5 bug, reported by hemostx, #605)
 
 ### Ruleset-related changes
 
@@ -138,6 +140,7 @@
 - `/demo_jump_skip_messages` to determine if messages should be printed to console during demo jump
 - `/enemyforceskins 1` will search for player names in lower case (#345)
 - `/fs_savegame_home` added, controls if games saved to home directory (default) or game directory (reported by githubtefo, #586)
+- `/gl_consolefont` now falls back to 'original' on load failure, but doesn't change value (for toggling no24bit, #605)
 - `/gl_custom_grenade_tf` allows `/gl_custom_grenade_*` variables to be ignored when playing Team Fortress
 - `/gl_mipmap_viewmodels` removed, replaced with `/gl_texturemode_viewmodels`
 - `/gl_turb_fire` added, controls if QMB explosions/fire spawn bubbles underwater
@@ -180,6 +183,8 @@
 - `/vid_framebuffer_sshotmode` controls if screenshot is of framebuffer or screen size
 - `/vid_framebuffer_multisample` controls multi-sampling level of the framebuffer (reported by Matrix, #367)
 - `/vid_hwgamma_fps` controls how frequency the gamma of the monitor will be set if hardware gamma is enabled
+- `/vid_reload` command to reload textures, rather than full `/vid_restart` (#602)
+- `/vid_reload_auto` controls if `/vid_reload` is automatically called when a cvar affecting texture load is changed
 - `-oldgamma` command line option to re-instate old `-gamma` behaviour
 - `-r-trace` command line option in debug build - writes out API calls for each frame to qw/trace/ directory (will kill fps, just for debugging)
 - `-r-verify` command line option in debug build - regularly downloads GL state from driver, for use with -r-trace
