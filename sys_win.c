@@ -682,11 +682,8 @@ void WinCheckOSInfo(void)
 void Sys_Init_ (void) 
 {
 	// Allocate a named semaphore on the client so the front end can tell if it is alive.
-	// Enabled for development purposes, but disabled for official builds.
 
-#ifdef _DEBUG
 	if (!COM_CheckParm(cmdline_param_client_allowmultipleclients))
-#endif
 	{
 		// Mutex will fail if semaphore already exists.
 		qwclsemaphore = CreateMutex(
