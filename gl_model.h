@@ -67,6 +67,7 @@ typedef struct texture_s {
 	qbool               loaded;                     //help speed up vid_restart, actual only for brush models
 	int                 isLumaTexture;              //fb is luma texture, rather than normal fb
 	qbool               isAlphaTested;              //texture is flagged for alpha-testing
+	qbool               isLitTurb;                  //turb texture has lightmap
 	int                 turbType;
 
 	int                 gl_width;
@@ -472,6 +473,7 @@ typedef struct worldspawn_info_s {
 	char skybox_name[MAX_QPATH];
 	float fog_density;
 	vec3_t fog_color;
+	float fog_sky;
 
 	float wateralpha;
 	float lavaalpha;

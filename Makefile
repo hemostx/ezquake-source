@@ -39,9 +39,6 @@ RCFLAGS ?=
 LDFLAGS ?=
 LIBS ?=
 
-#Temporarily disable tree vectorization optimization enabled at O3 due to gcc bug
-CFLAGS += -fno-tree-vectorize
-
 CFLAGS_c :=
 RCFLAGS_c :=
 LDFLAGS_c :=
@@ -65,10 +62,19 @@ else
 
     ifeq ($(SYS),Darwin)
         # 10.11 El Capitan does not search for header files here by default
-        CFLAGS_c += -I/usr/local/include -mmacosx-version-min=10.8
+        CFLAGS_c += -I/usr/local/include
 
         # For re-link/deploy dynamic libraries
-        LDFLAGS_c += -headerpad_max_install_names -mmacosx-version-min=10.8
+        LDFLAGS_c += -headerpad_max_install_names
+
+        # Cross-compiling support
+        ifneq ($(DARWIN_TARGET),)
+            CFLAGS_c += -target $(DARWIN_TARGET)
+            LDFLAGS_c += -target $(DARWIN_TARGET)
+        else
+            CFLAGS_c += -mmacosx-version-min=10.8
+            LDFLAGS_c += -mmacosx-version-min=10.8
+        endif
 
         # From  10.10 at least, expat is a system library
         EXPAT_CFLAGS =
@@ -260,7 +266,6 @@ CLASSIC_OPENGL_OBJS := \
     glc_bloom.o \
     glc_brushmodel.o \
     glc_draw.o \
-    glc_fog.o \
     glc_framebuffer.o \
     glc_lightmaps.o \
     glc_main.o \
