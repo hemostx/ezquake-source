@@ -1,7 +1,7 @@
 # ezQuake — Modern QuakeWorld Client
 [![Build Status](https://travis-ci.org/ezQuake/ezquake-source.svg?branch=master)](https://travis-ci.org/ezQuake/ezquake-source)
 
-Homepage: [https://ezquake.github.io/][homepage]
+Homepage: [https://ezquake.com][homepage]
 
 Community discord: [http://discord.quake.world][discord]
 
@@ -85,7 +85,7 @@ sudo apt-get install -y git mingw-w64 build-essential libspeexdsp-dev dos2unix p
 Now clone the ezQuake source code:
 
 ```
-git clone https://github.com/ezQuake/ezquake-source.git ezquake
+git clone --recurse-submodules https://github.com/ezQuake/ezquake-source.git ezquake
 ```
 
 Make sure line endings are not CRLF:
@@ -104,6 +104,11 @@ Copy the compiled binary to your Quake folder, the binary is called `ezquake.exe
 
 #### Using a Linux system
 
+Initialize/update git submodules:
+```
+git submodule update --init --recursive --remote
+```
+
 Make sure you have mingw32 toolchain installed. On Arch Linux it's `mingw-w64` (select complete group).
 
 Build an executable using the following command:
@@ -119,6 +124,8 @@ You can add `-jN` as a parameter to `make` to build in parallell. Use number of 
 _These instructions were tested on Ubuntu_
 
 Make sure you have the dependencies installed:
+
+(You may skip installing dependencies if you are going to use the build-linux.sh script included in the repository, this will take care of installing packages for you.)
 
 - For *Ubuntu 16.10+*
 ```
@@ -137,13 +144,19 @@ sudo dnf install git pcre-devel mesa-libEGL-devel SDL2-devel jansson-devel expat
 
 Clone the git repository:
 ```
-git clone https://github.com/ezQuake/ezquake-source.git
+git clone --recurse-submodules https://github.com/ezQuake/ezquake-source.git
 ```
 
 Switch to `ezquake-source` path:
 ```
- cd ~/ezquake-source/
+cd ~/ezquake-source/
 ```
+
+Initialize/update git submodules:
+```
+git submodule update --init --recursive --remote
+```
+
 Run the compilation (replace 5 with the number of cpu cores you have +1):
 ```
 make -j5
@@ -200,5 +213,5 @@ Nightly builds for Windows can be found [here][nightly]
  [nightly]: http://uttergrottan.localghost.net/ezquake/dev/nightlybuilds/win32/
  [releases]: https://github.com/ezQuake/ezquake-source/releases
  [issues]: https://github.com/ezQuake/ezquake-source/issues
- [homepage]: https://ezquake.github.io/
+ [homepage]: https://ezquake.com
  [discord]: http://discord.quake.world/

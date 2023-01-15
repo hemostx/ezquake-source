@@ -22,6 +22,8 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v3
+      with:
+        submodules: true
 
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v1.1
@@ -50,6 +52,8 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v3
+      with:
+        submodules: true
 
     - name: Install dependencies
       run: .github/workflows/scripts/homebrew.sh install-arm64
@@ -71,6 +75,8 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v3
+      with:
+        submodules: true
 
     - name: Install dependencies
       run: .github/workflows/scripts/homebrew.sh install-intel

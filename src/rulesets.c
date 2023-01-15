@@ -81,6 +81,7 @@ qbool RuleSets_DisallowSimpleTexture(model_t* mod)
 	}
 }
 
+// for models (gl_outline)
 qbool RuleSets_DisallowModelOutline(struct model_s *mod)
 {
 	if (mod == NULL) {
@@ -90,14 +91,25 @@ qbool RuleSets_DisallowModelOutline(struct model_s *mod)
 
 	switch (mod->modhint) {
 		case MOD_EYES:
-			return true;
 		case MOD_THUNDERBOLT:
 			return true;
 		case MOD_BACKPACK:
 			return !cls.demoplayback && (rulesetDef.ruleset == rs_qcon || rulesetDef.ruleset == rs_smackdown);
 		default:
 			// return to just rs_qcon once backface outlining tested
-			return !cls.demoplayback && (rulesetDef.ruleset == rs_qcon || rulesetDef.ruleset == rs_smackdown);
+//			return !cls.demoplayback && (rulesetDef.ruleset == rs_qcon || rulesetDef.ruleset == rs_smackdown);
+			return !cls.demoplayback && (rulesetDef.ruleset == rs_qcon);
+	}
+}
+
+// for edges (r_fx_geometry)
+qbool RuleSets_AllowEdgeOutline(void)
+{
+	switch(rulesetDef.ruleset) {
+		case rs_qcon:
+			return false;
+		default:
+			return true;
 	}
 }
 
@@ -212,6 +224,7 @@ static void Rulesets_Smackdown(qbool enable)
 	extern cvar_t r_shiftbeam;
 	extern cvar_t allow_scripts;
 	extern cvar_t cl_iDrive;
+	extern cvar_t scr_allowsnap;
 	int i;
 
 	locked_cvar_t disabled_cvars[] = {
@@ -219,7 +232,8 @@ static void Rulesets_Smackdown(qbool enable)
 		{&cl_iDrive, "0"},      // disable strafing aid
 		{&cl_hud, "0"},         // allows you place any text on the screen & filter incoming messages (hud strings)
 		{&cl_rollalpha, "20"},  // allows you to not dodge while seeing enemies dodging
-		{&r_shiftbeam, "0"}     // perphaps some people would think this allows you to aim better (maybe should be added for demo playback and spectating only)
+		{&r_shiftbeam, "0"},    // perphaps some people would think this allows you to aim better (maybe should be added for demo playback and spectating only)
+		{&scr_allowsnap, "1"}
 	};
 
 	if (enable) {
