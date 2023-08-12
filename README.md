@@ -1,6 +1,4 @@
 # ezQuake — Modern QuakeWorld Client
-[![Build Status](https://travis-ci.org/ezQuake/ezquake-source.svg?branch=master)](https://travis-ci.org/ezQuake/ezquake-source)
-
 Homepage: [https://ezquake.com][homepage]
 
 Community discord: [http://discord.quake.world][discord]
@@ -66,6 +64,17 @@ If you want to make a clean installation of ezQuake you can do this by following
 
 ### Compiling a Windows binary
 
+#### Using Visual Studio
+The project contain a VS solution.
+
+Clone the ezQuake source code:
+
+```
+git clone --recurse-submodules https://github.com/ezQuake/ezquake-source.git ezquake
+```
+Load the solution into VS, and compile your preferred target.
+
+
 #### Using Ubuntu Bash (WSL)
 
 You can use the new Ubuntu Bash feature in Windows 10 to compile ezQuake for Windows.
@@ -127,9 +136,9 @@ Make sure you have the dependencies installed:
 
 (You may skip installing dependencies if you are going to use the build-linux.sh script included in the repository, this will take care of installing packages for you.)
 
-- For *Ubuntu 16.10+*
+- For *Debian/Ubuntu 16.10+*
 ```
-sudo apt install git build-essential libsdl2-dev libjansson-dev libexpat-dev libcurl4-openssl-dev libpng-dev libjpeg-dev libsndfile-dev libspeex-dev libspeexdsp-dev libxxf86vm-dev
+sudo apt install git build-essential libsdl2-dev libjansson-dev libexpat-dev libcurl4-openssl-dev libpng-dev libjpeg-dev libsndfile-dev libspeex-dev libspeexdsp-dev libxxf86vm-dev libpcre3-dev
 ```
 - For *openSUSE Tumbleweed*
 ```

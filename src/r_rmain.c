@@ -138,7 +138,11 @@ cvar_t r_speeds                            = {"r_speeds", "0"};
 cvar_t r_fullbright                        = {"r_fullbright", "0"};
 cvar_t r_shadows                           = {"r_shadows", "0"};
 cvar_t r_wateralpha                        = {"gl_turbalpha", "1"};
+#if defined(EZ_MULTIPLE_RENDERERS) || defined(RENDERER_OPTION_MODERN_OPENGL)
+cvar_t r_dynamic                           = {"r_dynamic", "2", 0, OnDynamicLightingChange };
+#else
 cvar_t r_dynamic                           = {"r_dynamic", "1", 0, OnDynamicLightingChange };
+#endif
 cvar_t r_novis                             = {"r_novis", "0"};
 cvar_t r_netgraph                          = {"r_netgraph", "0"};
 cvar_t r_netstats                          = {"r_netstats", "0"};
@@ -158,6 +162,7 @@ cvar_t r_farclip                           = {"r_farclip", "8192", CVAR_RULESET_
 cvar_t r_skyname                           = {"r_skyname", "", 0, OnChange_r_skyname};
 cvar_t gl_detail                           = {"gl_detail","0"};
 cvar_t gl_brush_polygonoffset              = {"gl_brush_polygonoffset", "2.0"}; // This is the one to adjust if you notice flicker on lift @ e1m1 for instance, for z-fighting
+cvar_t gl_brush_polygonoffset_factor       = {"gl_brush_polygonoffset_factor", "0.05"};
 cvar_t gl_caustics                         = {"gl_caustics", "0"}; // 1
 cvar_t gl_lumatextures                     = {"gl_lumatextures", "1"};
 cvar_t gl_subdivide_size                   = {"gl_subdivide_size", "64"};
@@ -688,6 +693,7 @@ void R_Init(void)
 	Cvar_Register(&gl_clear);
 	Cvar_Register(&gl_clearColor);
 	Cvar_Register(&gl_brush_polygonoffset);
+	Cvar_Register(&gl_brush_polygonoffset_factor);
 
 	Cvar_Register(&gl_nocolors);
 	Cvar_Register(&gl_finish);

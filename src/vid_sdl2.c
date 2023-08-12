@@ -193,7 +193,7 @@ cvar_t in_raw                     = {"in_raw",                     "1",       CV
 cvar_t in_grab_windowed_mouse     = {"in_grab_windowed_mouse",     "1",       CVAR_ARCHIVE | CVAR_SILENT, in_grab_windowed_mouse_callback};
 cvar_t vid_grab_keyboard          = {"vid_grab_keyboard",          CVAR_DEF2, CVAR_LATCH_GFX }; /* Needs vid_restart thus vid_.... */
 #ifdef EZ_MULTIPLE_RENDERERS
-cvar_t vid_renderer               = {"vid_renderer",               "0",       CVAR_LATCH_GFX };
+cvar_t vid_renderer               = {"vid_renderer",               "1",       CVAR_LATCH_GFX };
 #endif
 cvar_t vid_gl_core_profile        = {"vid_gl_core_profile",        "0",       CVAR_LATCH_GFX };
 
@@ -327,6 +327,13 @@ void IN_StartupMouse(void)
 	Cvar_Register(&in_ignore_touch_events);
 #ifdef __APPLE__
 	Cvar_Register(&in_ignore_deadkeys);
+
+	if (in_raw.integer > 0) {
+		if (OSX_Mouse_Init() != 0) {
+			Com_Printf("warning: failed to initialize raw input mouse thread...\n");
+			Cvar_SetValue(&in_raw, 0);
+		}
+	}
 #endif
 
 	mouseinitialized = true;
@@ -1120,6 +1127,7 @@ static void VID_SetupResolution(void)
 			Cvar_LatchedSetValue(&vid_width, 1024);
 			Cvar_LatchedSetValue(&vid_height, 768);
 			Cvar_LatchedSetValue(&r_displayRefresh, 0);
+
 			return;
 		}
 
@@ -1516,6 +1524,15 @@ static void VID_SDL_Init(void)
 #endif
 
 	R_Initialise();
+
+	//always get/set refresh rate
+	SDL_DisplayMode display_mode;
+	int display_nbr;
+
+	display_nbr = VID_DisplayNumber(true);
+	if (SDL_GetDesktopDisplayMode(display_nbr, &display_mode) == 0) {
+		Cvar_AutoSetInt(&r_displayRefresh, display_mode.refresh_rate);
+	}
 
 	glConfig.initialized = true;
 }

@@ -7,14 +7,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-       target: [windows-glsl-x64, windows-std-x64, windows-multi-x64]
+       target: [windows-multi-x64]
        include:
-         - target: windows-glsl-x64
-           config: rls-modern
-           platform: x64
-         - target: windows-std-x64
-           config: rls-classic
-           platform: x64
          - target: windows-multi-x64
            config: rls-all
            platform: x64
@@ -91,3 +85,31 @@ jobs:
       with:
         name: macos-intel
         path: artifact
+
+  linux-build:
+    if: github.repository == 'QW-Group/ezquake-source'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+       target: [linux-x86_64]
+       include:
+         - target: linux-x86_64
+           platform: x86_64
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: Install dependencies
+      run: sudo apt-get install libfuse2
+
+    - name: Build
+      run: ./misc/appimage/appimage-manual_creation.sh
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.target }}-AppImage
+        path: ezQuake-${{ matrix.platform }}.AppImage
