@@ -1092,17 +1092,7 @@
       "default": "0",
       "desc": "Controls weapon and item pickup flash.",
       "group-id": "39",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "On.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "cl_c2sImpulseBackup": {
       "default": "3",
@@ -1459,17 +1449,7 @@
       "default": "0",
       "desc": "A clock showing how much time has elapsed since the start of the demo.",
       "group-id": "40",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "On.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "cl_democlock_x": {
       "default": "0",
@@ -1564,18 +1544,9 @@
     },
     "cl_filterdrawviewmodel": {
       "default": "0",
+      "desc": "Prevents r_drawviewmodel from being changed by servers like Rocket Arena.",
       "group-id": "54",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "Prevents r_drawviewmodel from being changed by servers like Rocket Arena.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "cl_fix_mvd": {
       "default": "0",
@@ -1862,18 +1833,9 @@
     },
     "cl_model_bobbing": {
       "default": "1",
+      "desc": "Rotating models bob up and down like in Quake3.",
       "group-id": "8",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "Rotating models bob up and down like in Quake3.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "cl_movespeedkey": {
       "default": "2.0",
@@ -2695,18 +2657,9 @@
     },
     "cl_smartjump": {
       "default": "1",
+      "desc": "Will convert +jump commands to +moveup commands when in liquid (water, lava, slime) and in spectator mode.",
       "group-id": "9",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "Will convert +jump commands to +moveup commands when in liquid (water, lava, slime) and in spectator mode.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "cl_solid_players": {
       "default": "1",
@@ -3642,17 +3595,7 @@
       "default": "1",
       "desc": "When you type a cvar name into console (like 'gl_gamma' or 'r_rocketlight'), the client will tell you the default value of the cvar.",
       "group-id": "5",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "On.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "cvar_viewhelp": {
       "default": "1",
@@ -5390,12 +5333,6 @@
       "remarks": "If you set r_rockettrail 7 and gl_part_trails 1, this variable will change your rockettrail duration.",
       "type": "float"
     },
-	"gl_part_bloodtrails": {
-      "default": "0",
-      "desc": "Determines particles used for (rocket etc) trails.",
-      "group-id": "36",
-      "type": "boolean"
-    },
     "gl_part_trails": {
       "default": "0",
       "desc": "Determines particles used for (rocket etc) trails.",
@@ -5851,22 +5788,7 @@
       "group-id": "8",
       "type": "integer"
     },
-    "gl_smoothfont": {
-      "desc": "Smooths out the font (which = good). But in some cases the font wasn't designed to be smoothed (sometimes the case of custom console fonts etc).",
-      "group-id": "5",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "On.",
-          "name": "true"
-        }
-      ]
-    },
-    "gl_smoothmodels": {
+      "gl_smoothmodels": {
       "default": "1",
       "desc": "Toggles between flat-shaded and smooth shaded models.",
       "group-id": "35",
@@ -13726,18 +13648,9 @@
     },
     "log_readable": {
       "default": "1",
+      "description": "Converts all non-printable characters to printable characters in your log (ie colored text, Ocrana LEDs) to make it more readable.",
       "group-id": "5",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "Will convert all non printable characters to printable characters in your log. This makes your log readable because all the weird ascii characters that usually occur because of different colored text in the client (and because of weird symbols - ocrana led's etc) are converted into printable characters.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "lookspring": {
       "default": "0",
@@ -14557,17 +14470,7 @@
       "default": "0",
       "desc": "When playing MultiView Demo (MVD), you can turn on more messages printed in the console, like those you might know from moreinfo command in ktpro.\nE.g.: Nabbe picked up quad.",
       "group-id": "20",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off",
-          "name": "false"
-        },
-        {
-          "description": "On",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "mvd_multitrack_1": {
       "default": "%f",
@@ -17585,18 +17488,9 @@
     },
     "s_swapstereo": {
       "default": "0",
+      "description": "Swaps left and right sound channels.",
       "group-id": "45",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "Will swap left and right sound channels.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "s_uselegacydrivers": {
       "desc": "If you are having problems with the new ALSA/OSS drivers you can enable this to be able to use legacy sound drivers, as in the ones used before v2.1.",
@@ -18285,33 +18179,15 @@
     },
     "scr_centerMenu": {
       "default": "1",
+      "desc": "Centers the menu vertically (has no effect if you're playing in 320x200 mode, same applies to scr_centersbar).",
       "group-id": "17",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "Centers the menu vertically (has no effect if you're playing in 320x200 mode, same applies to scr_centersbar).",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "scr_centerSbar": {
       "default": "1",
+      "description": "Centers the status bar (classic HUD).",
       "group-id": "47",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "The hud display will be centered.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "scr_centershift": {
       "default": "0",
@@ -18327,8 +18203,9 @@
     },
     "scr_centerspeed": {
       "default": "8",
-      "group-id": "0",
-      "system-generated": true
+      "desc": "This variable controls how fast the text is displayed at the end of the single player episodes.",
+      "group-id": "5",
+      "type": "float"
     },
     "scr_centertime": {
       "default": "2",
@@ -18669,12 +18546,6 @@
           "name": "true"
         }
       ]
-    },
-    "scr_printspeed": {
-      "default": "8",
-      "desc": "This variable controls how fast the text is displayed at the end of the single player episodes.",
-      "group-id": "5",
-      "type": "float"
     },
     "scr_qtvbuffer": {
       "default": "0",
@@ -19209,17 +19080,7 @@
       "default": "1",
       "desc": "Switch on/off the text at the bottom of the screen when spectating in free mode:\n\"SPECTATOR MODE | PRESS [ATTACK] for AutoCamera\"",
       "group-id": "40",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "On.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "scr_teaminfo": {
       "default": "1",
@@ -20922,50 +20783,20 @@
       "default": "0",
       "desc": "Controls whether f_took, f_death etc are forced to execute even if the game isn't a team game.",
       "group-id": "49",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "On.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "tp_loadlocs": {
       "default": "1",
       "desc": "Controls whether to load locs for teamplay reporting.\nNote: The locs should be in your \"/id1/locs/\",\n\"/ezquake/locs\" or \"/qw/locs\" folder.",
       "group-id": "49",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Off.",
-          "name": "false"
-        },
-        {
-          "description": "On.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "tp_msgtriggers": {
       "default": "1",
       "desc": "Switches on/off message triggers.",
       "group-id": "49",
       "remarks": "For ruleset 'Smackdown' message triggers always are off.",
-      "type": "boolean",
-      "values": [
-        {
-          "description": "Message triggers are off.",
-          "name": "false"
-        },
-        {
-          "description": "Message triggers are on.",
-          "name": "true"
-        }
-      ]
+      "type": "boolean"
     },
     "tp_name_armor": {
       "default": "armor",
