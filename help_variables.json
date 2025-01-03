@@ -1037,6 +1037,27 @@
         }
       ]
     },
+    "cl_allow_downloads": {
+      "default": "bsp,lmp,loc,mdl,mvd,pcx,spr,wad,wav",
+      "desc": "This variable controls which file extensions a client/server can download/upload from/to the server/client.",
+      "group-id": "9",
+      "type": "string"
+    },
+    "cl_allow_uploads": {
+      "default": "0",
+      "group-id": "9",
+      "type": "boolean",
+      "values": [
+        {
+          "description": "Don't allow uploads.",
+          "name": "0"
+        },
+        {
+          "description": "Allow uploads.",
+          "name": "1"
+        }
+      ]
+    },
     "cl_anglespeedkey": {
       "default": "1.5",
       "desc": "This variable sets multiplier by which your \"cl_yawspeed\" (how fast you turn) is multiplied when running (+speed).",
@@ -1686,7 +1707,7 @@
       "default": "1",
       "desc": "Enables/Disables strings-hud.\nStrings hud is not mqwcl hud. It gives you ability put any string (or value of some variable) on your hud.",
       "group-id": "40",
-      "remarks": "Strings hud banned for ruleset smackdown.",
+      "remarks": "Strings hud banned for ruleset smackdown and smackdrive.",
       "type": "boolean",
       "values": [
         {
@@ -2500,6 +2521,12 @@
         }
       ]
     },
+    "cl_remote_capabilities": {
+      "default": "alias,bf,changing,cmd,color,download,exec,fullserverinfo,impulse,infoset,ktx_infoset,ktx_sinfoset,nextul,on_enter,on_enter_ctf,on_enter_ffa,on_spec_enter,on_spec_enter_ctf,on_spec_enter_ffa,packet,play,reconnect,say,sinfoset,skin,skins,team,tempalias,track,wait",
+      "desc": "This variable controls which commands and variables a server is allowed to execute or set on the client. Input a comma-separated list of commands and variables to toggle access. The default values are adapted for KTX use.",
+      "group-id": "9",
+      "type": "string"
+    },
     "cl_restrictions": {
       "default": "0",
       "desc": "Triggers and re/msg trigger restrictions for spectator and demoplay modes.",
@@ -2521,7 +2548,7 @@
       "default": "20",
       "desc": "You can turn off the 'dodging' or 'rolling' effect for your own point of view while still see other player models affected by cl_rollangle.",
       "group-id": "53",
-      "remarks": "0 disables, 1 is standard. Disabled by ruleset smackdown.",
+      "remarks": "0 disables, 1 is standard. Disabled by ruleset smackdown and smackdrive.",
       "type": "integer"
     },
     "cl_rollangle": {
@@ -5142,7 +5169,7 @@
     },
     "gl_outline_scale_model": {
       "default": "1",
-      "desc": "Determines the scale of model outlines. Allows values 0 to 1 for rulesets smackdown and qcon, and 0 to 5 for other rulesets.",
+      "desc": "Determines the scale of model outlines. Allows values 0 to 1 for rulesets smackdown, smackdrive and qcon, and 0 to 5 for other rulesets.",
       "group-id": "35",
       "remarks": "Requires vid_renderer 1",
       "type": "float"
@@ -5175,6 +5202,12 @@
     "gl_part_blood": {
       "default": "0",
       "desc": "Determines particles used for blood effects.",
+      "group-id": "36",
+      "type": "boolean"
+    },
+    "gl_part_bloodtrails": {
+      "default": "1",
+      "desc": "Determines particles used for blood trails (gibs).",
       "group-id": "36",
       "type": "boolean"
     },
@@ -8539,6 +8572,11 @@
       "group-id": "19",
       "type": "string"
     },
+    "hud_gun2_frame_hide": {
+      "desc": "Hide the frame unless you have the weapon.",
+      "group-id": "19",
+      "type": "integer"
+    },
     "hud_gun2_item_opacity": {
       "group-id": "19",
       "type": "float"
@@ -8635,6 +8673,11 @@
       "desc": "Defines the color of the background of the gun3 HUD element. See HUD manual for more info.",
       "group-id": "19",
       "type": "string"
+    },
+    "hud_gun3_frame_hide": {
+      "desc": "Hide the frame unless you have the weapon.",
+      "group-id": "19",
+      "type": "integer"
     },
     "hud_gun3_item_opacity": {
       "group-id": "19",
@@ -8733,6 +8776,11 @@
       "group-id": "19",
       "type": "string"
     },
+    "hud_gun4_frame_hide": {
+      "desc": "Hide the frame unless you have the weapon.",
+      "group-id": "19",
+      "type": "integer"
+    },
     "hud_gun4_item_opacity": {
       "group-id": "19",
       "type": "float"
@@ -8829,6 +8877,11 @@
       "desc": "Defines the color of the background of the gun5 HUD element. See HUD manual for more info.",
       "group-id": "19",
       "type": "string"
+    },
+    "hud_gun5_frame_hide": {
+      "desc": "Hide the frame unless you have the weapon.",
+      "group-id": "19",
+      "type": "integer"
     },
     "hud_gun5_item_opacity": {
       "group-id": "19",
@@ -8927,6 +8980,11 @@
       "group-id": "19",
       "type": "string"
     },
+    "hud_gun6_frame_hide": {
+      "desc": "Hide the frame unless you have the weapon.",
+      "group-id": "19",
+      "type": "integer"
+    },
     "hud_gun6_item_opacity": {
       "group-id": "19",
       "type": "float"
@@ -9024,6 +9082,11 @@
       "group-id": "19",
       "type": "string"
     },
+    "hud_gun7_frame_hide": {
+      "desc": "Hide the frame unless you have the weapon.",
+      "group-id": "19",
+      "type": "integer"
+    },
     "hud_gun7_item_opacity": {
       "group-id": "19",
       "type": "float"
@@ -9120,6 +9183,11 @@
       "desc": "Defines the color of the background of the gun8 HUD element. See HUD manual for more info.",
       "group-id": "19",
       "type": "string"
+    },
+    "hud_gun8_frame_hide": {
+      "desc": "Hide the frame unless you have the weapon.",
+      "group-id": "19",
+      "type": "integer"
     },
     "hud_gun8_item_opacity": {
       "group-id": "19",
@@ -15621,6 +15689,23 @@
       "remarks": "See also: r_nearclip.",
       "type": "float"
     },
+    "r_remove_collinear_vertices": {
+        "default": "0",
+        "desc": "Filter out vertices causing triangles to have zero area. These types of triangles are a sore spot in some GPUs that risk introducing glitches. An expected side effect is a risk of seeing a sparkling pixel.",
+        "group-id": "35",
+        "remarks": "For macOS arm64 this is force-enabled to prevent cheating. This filtering is a temporary workaround before adding code to avoid generating such triangles in the first place.",
+        "type": "boolean",
+        "values": [
+            {
+                "description": "Disable filtering of collinear vertices.",
+                "name": "false"
+            },
+            {
+                "description": "Enable filtering of collinear vertices.",
+                "name": "true"
+            }
+        ]
+    },
     "r_fastsky": {
       "default": "0",
       "group-id": "51",
@@ -16458,7 +16543,7 @@
       "default": "1",
       "desc": "Adds transparency to the lightning gun beam (shaft).",
       "group-id": "8",
-      "remarks": "Disabled in ruleset smackdown.",
+      "remarks": "Disabled in ruleset smackdown and smackdrive.",
       "type": "float",
       "values": [
         {
@@ -16471,7 +16556,7 @@
       "default": "0",
       "desc": "Shift start of the shaft lights.",
       "group-id": "8",
-      "remarks": "Doesn't work with smackdown ruleset. Intended for movies.",
+      "remarks": "Doesn't work with ruleset smackdown and smackdrive. Intended for movies.",
       "type": "float"
     },
     "r_skincolormode": {
@@ -16531,6 +16616,13 @@
       "group-id": "51",
       "remarks": "Specifying a value will disable loading of skyboxes specified by the map.\nSkyboxes should be placed in 'env' or 'gfx/env' folders",
       "type": "string"
+    },
+    "r_skywind": {
+      "default": "1",
+      "desc": "Sets the scale factor of skybox animation if above 0, and skybox has an animation configuration.",
+      "group-id": "51",
+      "remarks": "Specifying a value above 1.0 will increase the pace of the configured animation.",
+      "type": "float"
     },
     "r_slimecolor": {
       "default": "10 60 10",
@@ -21722,6 +21814,86 @@
       "group-id": "52",
       "remarks": "Setting vid_framebuffer_scale overrides custom FBO width/height.",
       "type": "integer"
+    },
+    "vid_framebuffer_fxaa": {
+      "default": "0",
+      "desc": "Fast Approximate Anti-Aliasing. Enable vid_framebuffer 2 to avoid filtering HUD. Typically between 1-6.",
+      "group-id": "52",
+      "type": "integer",
+      "values": [
+        {
+          "description": "Disabled.",
+          "name": "0"
+        },
+        {
+          "description": "Medium dither, quality 1 (fastest).",
+          "name": "1"
+        },
+        {
+          "description": "Medium dither, quality 2.",
+          "name": "2"
+        },
+        {
+          "description": "Medium dither, quality 3.",
+          "name": "3"
+        },
+        {
+          "description": "Medium dither, quality 4.",
+          "name": "4"
+        },
+        {
+          "description": "Medium dither, quality 5.",
+          "name": "5"
+        },
+        {
+          "description": "Medium dither, quality 6 (highest quality).",
+          "name": "6"
+        },
+        {
+          "description": "Less dither, quality 1 (fastest).",
+          "name": "7"
+        },
+        {
+          "description": "Less dither, quality 2.",
+          "name": "8"
+        },
+        {
+          "description": "Less dither, quality 3.",
+          "name": "9"
+        },
+        {
+          "description": "Less dither, quality 4.",
+          "name": "10"
+        },
+        {
+          "description": "Less dither, quality 5.",
+          "name": "11"
+        },
+        {
+          "description": "Less dither, quality 6.",
+          "name": "12"
+        },
+        {
+          "description": "Less dither, quality 7.",
+          "name": "13"
+        },
+        {
+          "description": "Less dither, quality 8.",
+          "name": "14"
+        },
+        {
+          "description": "Less dither, quality 9.",
+          "name": "15"
+        },
+        {
+          "description": "Less dither, quality 10 (highest quality).",
+          "name": "16"
+        },
+        {
+          "description": "No dither (expensive).",
+          "name": "17"
+        }
+      ]
     },
     "vid_fullscreen": {
       "default": "1",

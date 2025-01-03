@@ -114,6 +114,15 @@ static void OnDynamicLightingChange(cvar_t* var, char* value, qbool* cancel)
 	}
 }
 
+static void OnRemoveCollinearVerticesChanged(cvar_t* var, char* value, qbool* cancel)
+{
+#if defined(__APPLE__) && defined(__aarch64__)
+	// At least arm64 based MacBook laptops are known to require this workaround.
+	Cvar_SetIgnoreCallback(var, "1");
+	*cancel = true;
+#endif
+}
+
 cvar_t cl_multiview                        = {"cl_multiview", "0" };
 cvar_t cl_mvdisplayhud                     = {"cl_mvdisplayhud", "1"};
 cvar_t cl_mvhudvertical                    = {"cl_mvhudvertical", "0"};
@@ -160,6 +169,7 @@ cvar_t r_floorcolor                        = {"r_floorcolor", "50 100 150", CVAR
 cvar_t gl_textureless                      = {"gl_textureless", "0", 0, OnChange_r_drawflat}; //Qrack
 cvar_t r_farclip                           = {"r_farclip", "8192", CVAR_RULESET_MAX | CVAR_RULESET_MIN, NULL, 8192.0f, R_MAXIMUM_FARCLIP, R_MINIMUM_FARCLIP }; // previous default was 4096. 8192 helps some TF players in big maps
 cvar_t r_skyname                           = {"r_skyname", "", 0, OnChange_r_skyname};
+cvar_t r_skywind                           = {"r_skywind", "1"};
 cvar_t gl_detail                           = {"gl_detail","0"};
 cvar_t gl_brush_polygonoffset              = {"gl_brush_polygonoffset", "2.0"}; // This is the one to adjust if you notice flicker on lift @ e1m1 for instance, for z-fighting
 cvar_t gl_brush_polygonoffset_factor       = {"gl_brush_polygonoffset_factor", "0.05"};
@@ -182,7 +192,7 @@ cvar_t gl_oldlitscaling                    = {"gl_oldlitscaling", "0"};
 cvar_t gl_colorlights                      = {"gl_colorlights", "1"};
 cvar_t gl_squareparticles                  = {"gl_squareparticles", "0", 0, OnSquareParticleChange};
 cvar_t gl_part_explosions                  = {"gl_part_explosions", "0"}; // 1
-cvar_t gl_part_bloodtrails                 = {"gl_part_bloodtrails", "0"}; // 1
+cvar_t gl_part_bloodtrails                 = {"gl_part_bloodtrails", "1"}; // 1 was the default behaviour before this became a cvar
 cvar_t gl_part_trails                      = {"gl_part_trails", "0"}; // 1
 cvar_t gl_part_tracer1_color               = {"gl_part_tracer1_color", "0 124 0", CVAR_COLOR};
 cvar_t gl_part_tracer2_color               = {"gl_part_tracer2_color", "255 77 0", CVAR_COLOR};
@@ -237,6 +247,8 @@ cvar_t gl_outline_color_enemy              = {"gl_outline_color_enemy", ""};
 cvar_t gl_smoothmodels                     = {"gl_smoothmodels", "1"};
 
 cvar_t gl_vbo_clientmemory                 = {"gl_vbo_clientmemory", "0", CVAR_LATCH_GFX };
+
+cvar_t r_remove_collinear_vertices         = {"r_remove_collinear_vertices", "0", 0, OnRemoveCollinearVerticesChanged};
 
 //Returns true if the box is completely outside the frustom
 qbool R_CullBox(vec3_t mins, vec3_t maxs)
@@ -591,7 +603,7 @@ static void R_SetupGL(void)
 
 void R_Init(void)
 {
-	Cmd_AddCommand("loadsky", R_LoadSky_f);
+	R_SkyRegisterCvars();
 	Cmd_AddCommand("timerefresh", R_TimeRefresh_f);
 #ifndef CLIENTONLY
 	Cmd_AddCommand("dev_pointfile", R_ReadPointFile_f);
@@ -643,6 +655,7 @@ void R_Init(void)
 
 	Cvar_SetCurrentGroup(CVAR_GROUP_TURB);
 	Cvar_Register(&r_skyname);
+	Cvar_Register(&r_skywind);
 	Cvar_Register(&r_fastsky);
 	Cvar_Register(&r_skycolor);
 	Cvar_Register(&r_fastturb);
@@ -749,6 +762,8 @@ void R_Init(void)
 	Cvar_Register(&cl_mvinset_size_y);
 	Cvar_Register(&cl_mvinset_top);
 	Cvar_Register(&cl_mvinset_right);
+
+	Cvar_Register(&r_remove_collinear_vertices);
 
 	Cvar_ResetCurrentGroup();
 

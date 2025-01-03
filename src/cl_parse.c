@@ -1287,7 +1287,13 @@ void CL_StartFileUpload (void)
 {
 	char *name;
 	int i;
+	extern cvar_t cl_allow_uploads;
 
+	if (!cl_allow_uploads.integer)
+	{
+		Com_Printf ("This command has been disabled for security reasons. Set cl_allow_uploads to 1 if you want to enable uploads.\n");
+		return;
+	}
 
 	if (cls.state < ca_onserver) 
 	{
@@ -1875,6 +1881,21 @@ void CL_ParseStatic (qbool extended)
 	ent->frame = es.frame;
 	ent->colormap = vid.colormap;
 	ent->skinnum = es.skinnum;
+#ifdef FTE_PEXT_TRANS
+	// set trans, 0 and 255 are both opaque, represented by alpha 0.
+	ent->alpha = es.trans == 255 ? 0.0f : (float)es.trans / 254.0f;
+#endif
+#ifdef FTE_PEXT_COLOURMOD
+	// Skip colourmod if unset, or identity
+	if ((es.colourmod[0] > 0 || es.colourmod[1] > 0 || es.colourmod[2] > 0) &&
+	    !(es.colourmod[0] == 32 && es.colourmod[1] == 32 && es.colourmod[2] == 32))
+	{
+		ent->r_modelcolor[0] = (float)es.colourmod[0] * 8.0f / 256.0f;
+		ent->r_modelcolor[1] = (float)es.colourmod[1] * 8.0f / 256.0f;
+		ent->r_modelcolor[2] = (float)es.colourmod[2] * 8.0f / 256.0f;
+		ent->renderfx |= RF_FORCECOLOURMOD;
+	}
+#endif
 
 	VectorCopy(es.origin, ent->origin);
 	VectorCopy(es.angles, ent->angles);

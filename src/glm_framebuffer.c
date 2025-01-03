@@ -40,6 +40,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define POST_PROCESS_PALETTE         1
 #define POST_PROCESS_3DONLY          2
 #define POST_PROCESS_TONEMAP         4
+#define POST_PROCESS_FXAA            8
 
 extern cvar_t vid_software_palette, vid_framebuffer, vid_framebuffer_hdr, vid_framebuffer_hdr_tonemap, vid_framebuffer_multisample;
 static texture_ref non_framebuffer_screen_texture;
@@ -83,13 +84,15 @@ qbool GLM_CompilePostProcessVAO(void)
 // If this returns false then the framebuffer will be blitted instead
 qbool GLM_CompilePostProcessProgram(void)
 {
+	int fxaa_preset = GL_FramebufferFxaaPreset();
 	int post_process_flags =
 		(vid_software_palette.integer ? POST_PROCESS_PALETTE : 0) |
 		(vid_framebuffer.integer == USE_FRAMEBUFFER_3DONLY ? POST_PROCESS_3DONLY : 0) |
-		(vid_framebuffer_hdr.integer && vid_framebuffer_hdr_tonemap.integer ? POST_PROCESS_TONEMAP : 0);
+		(vid_framebuffer_hdr.integer && vid_framebuffer_hdr_tonemap.integer ? POST_PROCESS_TONEMAP : 0) |
+		(fxaa_preset > 0 ? POST_PROCESS_FXAA : 0) | (fxaa_preset << 4); // mix in preset to detect change
 
 	if (R_ProgramRecompileNeeded(r_program_post_process, post_process_flags)) {
-		static char included_definitions[512];
+		static char included_definitions[131072];
 
 		memset(included_definitions, 0, sizeof(included_definitions));
 		if (post_process_flags & POST_PROCESS_PALETTE) {
@@ -100,6 +103,19 @@ qbool GLM_CompilePostProcessProgram(void)
 		}
 		if (post_process_flags & POST_PROCESS_TONEMAP) {
 			strlcat(included_definitions, "#define EZ_POSTPROCESS_TONEMAP\n", sizeof(included_definitions));
+		}
+		if (post_process_flags & POST_PROCESS_FXAA) {
+			extern const unsigned char fxaa_h_glsl[];
+			char buffer[33];
+			const char *settings =
+					"#define EZ_POSTPROCESS_FXAA\n" \
+					"#define FXAA_PC 1\n" \
+					"#define FXAA_GLSL_130 1\n" \
+					"#define FXAA_GREEN_AS_LUMA 1\n";
+			snprintf(buffer, sizeof(buffer), "#define FXAA_QUALITY__PRESET %d\n", fxaa_preset);
+			strlcat(included_definitions, settings, sizeof(included_definitions));
+			strlcat(included_definitions, buffer, sizeof(included_definitions));
+			strlcat(included_definitions, (const char *)fxaa_h_glsl, sizeof(included_definitions));
 		}
 
 		// Initialise program for drawing image

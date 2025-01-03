@@ -31,6 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "glm_local.h"
 #include "r_renderer.h"
 #include "gl_texture.h"
+#include "r_brushmodel_sky.h"
 
 static uniform_block_frame_constants_t frameConstants;
 static qbool frameConstantsUploaded = false;
@@ -150,6 +151,8 @@ void GLM_PreRenderView(void)
 	// Window constants
 	frameConstants.r_width = VID_ScaledWidth3D();
 	frameConstants.r_height = VID_ScaledHeight3D();
+	frameConstants.r_inv_width = 1.0f / (float) frameConstants.r_width;
+	frameConstants.r_inv_height = 1.0f / (float) frameConstants.r_height;
 	frameConstants.r_zFar = R_FarPlaneZ();
 	frameConstants.r_zNear = R_NearPlaneZ();
 
@@ -159,6 +162,8 @@ void GLM_PreRenderView(void)
 	frameConstants.fogMaxZ = r_refdef2.fog_linear_end;
 	frameConstants.skyFogMix = r_refdef2.fog_sky;
 	frameConstants.fogDensity = r_refdef2.fog_density; // (r_refdef2.fog_calculation == fogcalc_exp2 ? r_refdef2.fog_density * r_refdef2.fog_density : r_refdef2.fog_density);
+
+	Skywind_GetDirectionAndPhase(frameConstants.windDir, &frameConstants.windPhase);
 
 	frameConstantsUploaded = false;
 }

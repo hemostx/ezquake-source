@@ -113,6 +113,11 @@ else()
 endif()
 
 find_library(MATH m)
+
+# Override by configuring with -DOpenGL_GL_PREFERENCE=GLVND
+if(NOT OpenGL_GL_PREFERENCE)
+    set(OpenGL_GL_PREFERENCE LEGACY)
+endif()
 find_package(OpenGL REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -256,6 +261,15 @@ set(server
 )
 source_group(TREE ${SOURCE_DIR} PREFIX "Source Files/server" FILES ${server})
 source_group(TREE ${SOURCE_DIR} PREFIX "Header Files/server" FILES ${server_headers})
+
+if(RENDERER_MODERN_OPENGL OR RENDERER_CLASSIC_OPENGL)
+    set(SHARED_GLSL_DIR ${SOURCE_DIR}/glsl/shared)
+    add_resources(shaders_shared
+            ${SHARED_GLSL_DIR}/fxaa.h.glsl
+    )
+    source_group(TREE ${SOURCE_DIR} PREFIX "Source Files/shared_opengl" FILES ${shared_opengl})
+    source_group(TREE ${SOURCE_DIR} PREFIX "Header Files/shared_opengl" FILES ${shared_opengl_headers})
+endif()
 
 if(RENDERER_MODERN_OPENGL)
     set(MODERN_GLSL_DIR ${SOURCE_DIR}/glsl)
@@ -756,16 +770,21 @@ set(central
 source_group(TREE ${SOURCE_DIR} PREFIX "Source Files/central" FILES ${central})
 source_group(TREE ${SOURCE_DIR} PREFIX "Header Files/central" FILES ${central_headers})
 
-set(main ${SOURCE_DIR}/sys_$<IF:$<PLATFORM_ID:Windows>,win,posix>.c)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(main ${SOURCE_DIR}/sys_win.c)
+else()
+    set(main ${SOURCE_DIR}/sys_posix.c)
+endif()
 source_group(TREE ${SOURCE_DIR} PREFIX "Source Files/main" FILES ${main})
 
 get_target_property(version_major git_version VERSION_MAJOR)
 get_target_property(version_minor git_version VERSION_MINOR)
 get_target_property(version_patch git_version VERSION_PATCH)
 get_target_property(version_build git_version REVISION)
+get_target_property(version_commit git_version COMMIT)
 
 # macOS icon
-set(macos_icon "${PROJECT_SOURCE_DIR}/misc/install/ezquake.icns")
+set(macos_icon "${PROJECT_SOURCE_DIR}/dist/macOS/ezquake.icns")
 set_source_files_properties(${macos_icon} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
 # Windows icon, and exe metadata
@@ -773,9 +792,10 @@ set(windows_icon "${CMAKE_CURRENT_BINARY_DIR}/ezQuake.rc")
 set(EZQUAKE_RESOURCE_AUTHOR "QW-Group")
 set(EZQUAKE_RESOURCE_NAME "ezQuake")
 set(EZQUAKE_RESOURCE_DESCRIPTION "ezQuake - a QuakeWorld client")
-set(EZQUAKE_RESOURCE_ICON "${PROJECT_SOURCE_DIR}/ezquake.ico")
+set(EZQUAKE_RESOURCE_ICON "${PROJECT_SOURCE_DIR}/dist/windows/ezquake.ico")
 set(EZQUAKE_RESOURCE_VERSION "${version_major},${version_minor},${version_patch},${version_build}")
-configure_file("${PROJECT_SOURCE_DIR}/ezQuake.rc.in" ${windows_icon} @ONLY)
+set(EZQUAKE_RESOURCE_COMMIT "${version_commit}")
+configure_file("${PROJECT_SOURCE_DIR}/dist/windows/ezQuake.rc.in" ${windows_icon} @ONLY)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     # Mark the executable as a non-console application
@@ -841,6 +861,7 @@ target_compile_definitions(ezquake PRIVATE
 target_link_libraries(ezquake PRIVATE
         $<$<BOOL:${RENDERER_MODERN_OPENGL}>:shaders_modern>
         $<$<BOOL:${RENDERER_CLASSIC_OPENGL}>:shaders_classic>
+        shaders_shared
         documentation
         git_version
 
@@ -878,25 +899,12 @@ endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     string(TOLOWER "ezQuake" EXECUTABLE_NAME)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    string(TOLOWER "ezquake-${CMAKE_SYSTEM_PROCESSOR}" EXECUTABLE_NAME)
+    string(TOLOWER "ezquake" EXECUTABLE_NAME)
 else()
     string(TOLOWER "ezquake-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}" EXECUTABLE_NAME)
 endif()
 
 set_target_properties(ezquake PROPERTIES OUTPUT_NAME ${EXECUTABLE_NAME})
-
-# Make executable easy to find in project root, strip if release (macOS does this on its own).
-# If CMake was invoked with an installation prefix, don't override with project root.
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(INSTALL_DESTINATION "${PROJECT_SOURCE_DIR}" CACHE PATH "Installation Directory" FORCE)
-
-    install(TARGETS ezquake DESTINATION ${INSTALL_DESTINATION})
-
-    add_custom_command(
-        TARGET ezquake POST_BUILD
-        COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR} $<$<CONFIG:Release>:--strip> --config $<CONFIG>
-    )
-endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     get_target_property(version git_version GIT_DESCRIBE)
@@ -913,50 +921,17 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             XCODE_ATTRIBUTE_INFOPLIST_KEY_CFBundleDisplayName       "ezQuake"
             XCODE_ATTRIBUTE_INFOPLIST_KEY_LSApplicationCategoryType "public.app-category.action-games"
             XCODE_ATTRIBUTE_INFOPLIST_KEY_NSHumanReadableCopyright  "GNU General Public License, version 2"
-            MACOSX_BUNDLE_ICON_FILE                                 "ezquake"
+            XCODE_ATTRIBUTE_INFOPLIST_FILE                          "${PROJECT_SOURCE_DIR}/dist/macOS/MacOSXBundleInfo.plist.in"
     )
 
     if(ENABLE_SANDBOX)
         set_target_properties(ezquake PROPERTIES
-                XCODE_ATTRIBUTE_ENABLE_APP_SANDBOX                 YES
-                XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME            YES
-                XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS YES
-                XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS             "misc/install/ezquake.entitlements.plist"
+                XCODE_ATTRIBUTE_ENABLE_APP_SANDBOX                                         YES
+                XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME                                    YES
+                XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=Debug]          YES
+                XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=RelWithDebInfo] YES
+                XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=Release]        NO
+                XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "dist/macOS/ezquake.entitlements.plist"
         )
     endif()
-
-    add_custom_command(
-            TARGET ezquake POST_BUILD
-            COMMAND /usr/libexec/PlistBuddy
-            -c "Add :NSHighResolutionCapable bool YES"
-            "$<TARGET_FILE_DIR:ezquake>/../Info.plist"
-    )
-
-    # qw:// protocol support
-    add_custom_command(
-            TARGET ezquake POST_BUILD
-            COMMAND /usr/libexec/PlistBuddy
-            -c "Add :CFBundleURLTypes array"
-            -c "Add :CFBundleURLTypes:0 dict"
-            -c "Add :CFBundleURLTypes:0:CFBundleURLName string QW"
-            -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array"
-            -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string qw"
-            "$<TARGET_FILE_DIR:ezquake>/../Info.plist"
-    )
-
-    # .mvd/.qwd/.dem file type support
-    add_custom_command(
-            TARGET ezquake POST_BUILD
-            COMMAND /usr/libexec/PlistBuddy
-            -c "Add :CFBundleDocumentTypes array"
-            -c "Add :CFBundleDocumentTypes:0 dict"
-            -c "Add :CFBundleDocumentTypes:0:CFBundleTypeName string \"Quake demo\""
-            -c "Add :CFBundleDocumentTypes:0:CFBundleTypeRole string Viewer"
-            -c "Add :CFBundleDocumentTypes:0:CFBundleTypeIconFile string ezquake.icns"
-            -c "Add :CFBundleDocumentTypes:0:CFBundleTypeExtensions array"
-            -c "Add :CFBundleDocumentTypes:0:CFBundleTypeExtensions: string mvd"
-            -c "Add :CFBundleDocumentTypes:0:CFBundleTypeExtensions: string qwd"
-            -c "Add :CFBundleDocumentTypes:0:CFBundleTypeExtensions: string dem"
-            "$<TARGET_FILE_DIR:ezquake>/../Info.plist"
-    )
 endif()
