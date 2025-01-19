@@ -181,7 +181,18 @@ void CL_AddEntityToList(visentlist_t* list, visentlist_entrytype_t vistype, enti
 
 		ent = &list->list[cl_visents.count].ent;
 		list->list[cl_visents.count].type = type;
-		list->list[cl_visents.count].distance = VectorDistanceQuick(cl.simorg, ent->origin);
+		if (vistype == visent_alpha) {
+			// Sort transparent entities based on closest point for stable back-to-front rendering.
+			vec3_t distance;
+			int i;
+			for (i = 0; i < 3; i++) {
+				distance[i] = r_refdef.vieworg[i] - ent->origin[i];
+				distance[i] -= bound(ent->model->mins[i], distance[i], ent->model->maxs[i]);
+			}
+			list->list[cl_visents.count].distance = DotProduct(distance, distance);
+		} else {
+			list->list[cl_visents.count].distance = VectorDistanceQuick(cl.simorg, ent->origin);
+		}
 		list->list[cl_visents.count].draw[vistype] = true;
 
 		ent->outlineScale = 0.5f * (r_refdef2.outlineBase + DotProduct(ent->origin, r_refdef2.outline_vpn));
@@ -232,6 +243,9 @@ void CL_AddEntity(entity_t *ent)
 	else if (ent->model->modhint == MOD_PLAYER || ent->model->modhint == MOD_EYES || ent->renderfx & RF_PLAYERMODEL) {
 		vistype = visent_firstpass;
 		ent->renderfx |= RF_NOSHADOW;
+	}
+	else if (ent->alpha > 0.0f && ent->alpha < 1.0f) {
+		vistype = visent_alpha;
 	}
 	else {
 		vistype = visent_normal;
@@ -1511,14 +1525,6 @@ void CL_ParsePlayerinfo (void)
 		if (flags & PF_TRANS_Z && cls.fteprotocolextensions & FTE_PEXT_TRANS)
 			state->alpha = MSG_ReadByte();
 #endif
-#ifdef FTE_PEXT_COLOURMOD
-		if (flags & PF_COLOURMOD && cls.fteprotocolextensions & FTE_PEXT_COLOURMOD)
-		{
-			state->colourmod[0] = MSG_ReadByte();
-			state->colourmod[1] = MSG_ReadByte();
-			state->colourmod[2] = MSG_ReadByte();
-		}
-#endif
 
 		if (cl.z_ext & Z_EXT_PM_TYPE)
 		{
@@ -1584,7 +1590,29 @@ guess_pm_type:
 			// Write out here - generally packets are copied, but flags for userdelta were changed
 			//   in protocol 27 - we always write out in new format
 			MSG_WriteByte(&cls.demomessage, num);
+#if defined(FTE_PEXT_TRANS)
+			if (cls.fteprotocolextensions & FTE_PEXT_TRANS)
+			{
+				if (flags & 0xff0000)
+				{
+					flags |= PF_EXTRA_PFS;
+				}
+				MSG_WriteShort (&cls.demomessage, flags & 0xffff);
+				if (flags & PF_EXTRA_PFS)
+				{
+					MSG_WriteByte(&cls.demomessage, (flags & 0xff0000) >> 16);
+				}
+			}
+			else
+			{
+				// Without PEXT_TRANS there's no PF_EXTRA_PFS, move
+				// PF_ONGROUND and PF_SOLID to their expected offsets.
+				MSG_WriteShort (&cls.demomessage, flags & 0x3fff | (flags & 0xc00000) >> 8);
+			}
+#else
 			MSG_WriteShort(&cls.demomessage, flags);
+#endif
+
 			if (cls.mvdprotocolextensions1 & MVD_PEXT1_FLOATCOORDS) {
 				MSG_WriteLongCoord(&cls.demomessage, state->origin[0]);
 				MSG_WriteLongCoord(&cls.demomessage, state->origin[1]);
